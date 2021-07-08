@@ -91,6 +91,24 @@ signing {
 }
 
 
+// TODO (renato): clean up this whole dependencies block. It should be integrated into the other block.
+//  DJL  //
+dependencies {
+    // %mavenRepo snapshots https://oss.sonatype.org/content/repositories/snapshots/
+    // TODO (renato): these versions should not be hardcoded
+    api "ai.djl:api:0.11.0"
+    api "ai.djl.paddlepaddle:paddlepaddle-native-auto:2.0.2"
+    api "ai.djl.paddlepaddle:paddlepaddle-model-zoo:0.11.0"
+
+    // second engine to do preprocessing and postprocessing
+    api "ai.djl.pytorch:pytorch-engine:0.11.0"
+    api "ai.djl.pytorch:pytorch-native-auto:1.8.1"
+
+    //implementation "org.slf4j:slf4j-api:1.7.26"
+    //implementation "org.slf4j:slf4j-simple:1.7.26"
+}
+
+
 /**
  * We cannot switch to implementation yet in multi-module setups.
  * With Gradle 6.7 and MacOS, declaring dependencies as implementation means they do not get exposed to other projects

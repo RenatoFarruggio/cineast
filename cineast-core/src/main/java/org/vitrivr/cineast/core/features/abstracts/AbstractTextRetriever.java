@@ -128,6 +128,11 @@ public abstract class AbstractTextRetriever implements Retriever, Extractor {
     return this.getSimilar(qc, terms.toArray(new String[]{}));
   }
 
+  protected void persist(String shotId, String featureString) {
+    SimpleFulltextFeatureDescriptor descriptor = new SimpleFulltextFeatureDescriptor(shotId, featureString);
+    this.writer.write(descriptor);
+  }
+
   @Override
   public List<ScoreElement> getSimilar(List<String> segmentIds, ReadableQueryConfig qc) {
     List<String> list = this.selector.getRows(GENERIC_ID_COLUMN_QUALIFIER, segmentIds).stream().map(map -> map.get(FEATURE_COLUMN_QUALIFIER).getString()).collect(Collectors.toList());
