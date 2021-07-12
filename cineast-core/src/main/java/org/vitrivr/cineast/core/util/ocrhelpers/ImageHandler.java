@@ -30,8 +30,8 @@ public class ImageHandler {
     public static void saveImage(BufferedImage img, String pathname, String name, String filetype) {
         if (!pathname.endsWith("/") & !pathname.equals(""))
             pathname += "/";
-        // TODO: create output directory if not existent.
-        //  Concrete: It will fail, if there is no "evaluations" folder!
+
+        new File(pathname).mkdir();  // create output directory if it does not exist
 
         try {
             // retrieve image

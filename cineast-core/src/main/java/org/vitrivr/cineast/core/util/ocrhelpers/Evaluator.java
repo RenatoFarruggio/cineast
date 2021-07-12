@@ -86,10 +86,9 @@ public class Evaluator {
      */
     public void evaluateDetectionOnIncidentalSceneText() {
         // These are user inputs. TODO: Implement argument builder
-        final String file_name_results_detection = "results_detection.csv";
-        final String file_name_results_recognition = "results_recognition.csv";
-        final String path_to_images = "test_imagesIncidentalSceneText/test/";
-        final String path_to_ground_truth = "test_images/IncidentalSceneText/test/gt/";
+        final String file_name_results = "resultsIncidentalSceneText.csv";
+        final String path_to_images = "C:\\Users\\Renato\\Downloads\\IncidentalSceneText\\test\\ch4_test_images";
+        final String path_to_ground_truth = "C:\\Users\\Renato\\Downloads\\IncidentalSceneText\\test\\Challenge4_Test_Task1_GT";
         final String path_to_output = "evaluations/";
         final boolean save_output_images = true;
 
@@ -99,11 +98,11 @@ public class Evaluator {
         // TODO: find a solution for img sorting
         // Problem: this sorts images lexicographically, i.e.
         // img_1, img_10, img_100, img_101, img_102, ...
-        //Arrays.sort(imageNames);
+        Arrays.sort(imageNames);
 
         InferenceModel inferenceModel = new InferenceModel();
 
-        try (Writer w = new FileWriter(file_name_results_detection)) {
+        try (Writer w = new FileWriter(file_name_results)) {
             //try (Reader r = new FileReader(ground_truth))
             BufferedWriter csvWriter = new BufferedWriter(w);
             csvWriter.append("image_name,x_res,y_res,ms_det,ms_rec,ms_tot,tp,fn,fp,iou_avg,jaccard_distance_recognition,jaccard_trigram_distance_recognition");
@@ -125,7 +124,7 @@ public class Evaluator {
             // PIPELINE
             for (String imageName : imageNames) {
                 // 1. Load image
-                Path imagePath = Paths.get(path_to_images+imageName);
+                Path imagePath = Paths.get(path_to_images,imageName);
                 img = inferenceModel.loadImage(imagePath);
 
                 // 2. Text detection
@@ -165,147 +164,7 @@ public class Evaluator {
                 System.out.println(line);
 
                 // 8. Draw textboxes on the picture
-                BufferedImage bufferedImage = ImageHandler.loadImage(path_to_images + imageName);
-                if (save_output_images) {
-
-                    // Draw all boxes
-                    drawBoxes(
-                            bufferedImage,
-                            gtTextboxList,
-                            DRAWMODE.gt);
-                    drawBoxes(
-                            bufferedImage,
-                            List.copyOf(detectionEvaluationResult.fn),
-                            DRAWMODE.fn);
-                    drawBoxes(
-                            bufferedImage,
-                            List.copyOf(detectionEvaluationResult.fp),
-                            DRAWMODE.fp);
-                    drawBoxes(
-                            bufferedImage,
-                            List.copyOf(detectionEvaluationResult.tp),
-                            DRAWMODE.tp);
-
-                    // Draw a color legend
-                    drawColorLegend(bufferedImage);
-
-                    // Save image
-                    String name = imageName.split("\\.")[0];  // e.g.: img_1
-                    String type = imageName.split("\\.")[1];  // e.g.: jpg
-
-                    ImageHandler.saveImage(bufferedImage, path_to_output, name + "_detection_result", type);
-                }
-
-            }
-            csvWriter.close();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-
-    }
-
-    /**
-     * Creates a csv file containing:
-     *
-     *  image_name,     name of the image
-     *  x_res,          width of the image
-     *  y_res,          height of the image
-     *  ms_det,         time it took to do text detection
-     *  ms_rec,         time it took to recognize the text in all textboxes
-     *  ms_tot,         time it took to do text detection and text recognition
-     *  tp,             true positives: textboxes that were detected correctly
-     *  fn,             false negatives: textboxes in ground truth whose text was not detected
-     *  fp,             false positives: textboxes detected where there is no text
-     *  iou_avg,        average iou of detected textboxes: sum of all tp iou's divided by number of tp
-     *  jaccard_distance_recognition,
-     *                  intersection over union
-     *  jaccard_trigram_distance_recognition,
-     *                  sum of jaccard trigram distances between words found and words in ground truth
-     */
-    public void evaluateRecognitionOnIncidentalSceneText() {
-        // These are user inputs. TODO: Implement argument builder
-        final String file_name_results_detection = "results_detection.csv";
-        final String file_name_results_recognition = "results_recognition.csv";
-        final String path_to_images = "test_imagesIncidentalSceneText/test/";
-        final String path_to_ground_truth = "test_images/IncidentalSceneText/test/gt/";
-        final String path_to_output = "evaluations/";
-        final boolean save_output_images = true;
-
-        File img_folder = new File(path_to_images);
-        String[] imageNames = img_folder.list((dir, name) -> name.endsWith(".jpg"));
-        assert imageNames != null;
-        // TODO: find a solution for img sorting
-        // Problem: this sorts images lexicographically, i.e.
-        // img_1, img_10, img_100, img_101, img_102, ...
-        //Arrays.sort(imageNames);
-
-        InferenceModel inferenceModel = new InferenceModel();
-
-        try (Writer w = new FileWriter(file_name_results_detection)) {
-            //try (Reader r = new FileReader(ground_truth))
-            BufferedWriter csvWriter = new BufferedWriter(w);
-            csvWriter.append("image_name,x_res,y_res,ms_det,ms_rec,ms_tot,tp,fn,fp,iou_avg,jaccard_distance_recognition,jaccard_trigram_distance_recognition");
-            csvWriter.append(System.lineSeparator());
-
-            // Define variables
-            long start_det, end_det;  // detection
-            long start_rec, end_rec;  // recognition
-            long ms_det, ms_rec, ms_tot;  // milliseconds
-
-            DetectionEvaluationResult detectionEvaluationResult;
-            RecognitionEvaluationResult recognitionEvaluationResult;
-
-            Image img;
-
-            HashMap<String, List<Textbox>> groundTruthTextboxes = getGroundTruthTextboxes(path_to_ground_truth);
-            DetectedObjects detectedBoxes;
-
-            // PIPELINE
-            for (String imageName : imageNames) {
-                // 1. Load image
-                Path imagePath = Paths.get(path_to_images+imageName);
-                img = inferenceModel.loadImage(imagePath);
-
-                // 2. Text detection
-                start_det = System.currentTimeMillis();
-                detectedBoxes = inferenceModel.detection(img);
-                end_det = System.currentTimeMillis();
-
-                // 3. Text recognition
-                start_rec = System.currentTimeMillis();
-                List<String> recognizedText = inferenceModel.recognition(img, detectedBoxes);
-                end_rec = System.currentTimeMillis();
-
-                // 4. Evaluate detections
-                System.out.println("Evaluating detections of img: " + imageName + " ...");
-                String key = imageName.split("\\.", 2)[0];
-                List<Textbox> gtTextboxList = groundTruthTextboxes.get(key);
-                detectionEvaluationResult = evaluateDetections(img, detectedBoxes, gtTextboxList);
-
-                // 5. Evaluate recognitions
-                recognitionEvaluationResult = evaluateRecognitions(recognizedText); // TODO: add ground truth
-
-                // 6. Calculate runtimes
-                ms_tot = end_rec - start_det;
-                ms_det = end_det - start_det;
-                ms_rec = end_rec - start_rec;
-
-                // 7. Write data to file
-                String line = format_csv_line(imageName, img.getWidth(), img.getHeight(),
-                        ms_det, ms_rec, ms_tot,
-                        detectionEvaluationResult.tp.size(),
-                        detectionEvaluationResult.fn.size(),
-                        detectionEvaluationResult.fp.size(),
-                        detectionEvaluationResult.avgIOU,
-                        recognitionEvaluationResult.iou,
-                        recognitionEvaluationResult.jaccard_trigram_distance);
-                csvWriter.write(line);
-                System.out.println(line);
-
-                // 8. Draw textboxes on the picture
-                BufferedImage bufferedImage = ImageHandler.loadImage(path_to_images + imageName);
+                BufferedImage bufferedImage = ImageHandler.loadImage(Paths.get(path_to_images,imageName).toString());
                 if (save_output_images) {
 
                     // Draw all boxes
@@ -393,7 +252,7 @@ public class Evaluator {
         String[] files = gt_folder.list((dir, name) -> name.endsWith(".txt"));
         for (String fileName : files) {
             List<Textbox> list = new ArrayList<>();
-            File file = new File(path_to_ground_truth + fileName);
+            File file = new File(Paths.get(path_to_ground_truth,fileName).toString());
             String imgName = (fileName.split("_", 2)[1]).split("\\.", 2)[0];
 
             final Scanner s;
