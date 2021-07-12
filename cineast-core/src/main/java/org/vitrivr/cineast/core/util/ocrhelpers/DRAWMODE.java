@@ -3,7 +3,7 @@ package org.vitrivr.cineast.core.util.ocrhelpers;
 import java.awt.Color;
 
 public enum DRAWMODE {
-    gt,
+    gt,  // TODO (renato): rename to gtDetected
     tp,
     fn,
     fp;

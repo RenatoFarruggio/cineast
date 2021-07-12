@@ -1,6 +1,7 @@
 package org.vitrivr.cineast.core.util.ocrhelpers;
 
 // TODO: remove all camel cases
+// TODO: add rotation model
 
 import ai.djl.modality.cv.Image;
 import ai.djl.modality.cv.output.DetectedObjects;
@@ -221,7 +222,7 @@ public class Evaluator {
 
     private void drawColorLegend(BufferedImage img) {
         int linespace = 2;
-        int textheight = 10; // THIS DOES NOT CHANGE TEXT SIZE
+        int textheight = 10; // THIS DOES NOT CHANGE THE TEXT SIZE
 
 
         List<DRAWMODE> order = new ArrayList<DRAWMODE>(
@@ -239,7 +240,8 @@ public class Evaluator {
         }
     }
 
-    private RecognitionEvaluationResult evaluateRecognitions(List<String> recognizedText) {
+    private RecognitionEvaluationResult evaluateRecognitions(List<String> recognizedText, HashMap<String, List<Tuple2<Textbox, String>>> groundTruthTextboxes) {
+        // TODO (renato): implement me
         return new RecognitionEvaluationResult(1.0d, 1.0d);
     }
 
@@ -277,6 +279,7 @@ public class Evaluator {
         Set<Textbox> tp = new HashSet<>();
         Set<Textbox> fn = new HashSet<>();
         Set<Textbox> fp = new HashSet<>();
+        // TODO (renato): return foundBoxes aswell, i.e. add it to DetectionEvaluationResult
 
         double avgIOU = 0;
         Set<Textbox> foundBoxes = new HashSet<>();
