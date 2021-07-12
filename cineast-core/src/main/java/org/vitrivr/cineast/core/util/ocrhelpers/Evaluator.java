@@ -85,7 +85,7 @@ public class Evaluator {
      *  jaccard_trigram_distance_recognition,
      *                  sum of jaccard trigram distances between words found and words in ground truth
      */
-    public void evaluateDetectionOnIncidentalSceneText() {
+    public void evaluateOnIncidentalSceneText() {
         // These are user inputs. TODO: Implement argument builder
         final String file_name_results = "resultsIncidentalSceneText.csv";
         final String path_to_images = "C:\\Users\\Renato\\Downloads\\IncidentalSceneText\\test\\ch4_test_images";
@@ -95,10 +95,12 @@ public class Evaluator {
 
         File img_folder = new File(path_to_images);
         String[] imageNames = img_folder.list((dir, name) -> name.endsWith(".jpg"));
+
         assert imageNames != null;
         // TODO: find a solution for img sorting
         // Problem: this sorts images lexicographically, i.e.
         // img_1, img_10, img_100, img_101, img_102, ...
+        // I want: img_1, img_2, img_3, ...
         Arrays.sort(imageNames);
 
         InferenceModel inferenceModel = new InferenceModel();
@@ -145,7 +147,7 @@ public class Evaluator {
                 detectionEvaluationResult = evaluateDetections(img, detectedBoxes, gtTextboxList);
 
                 // 5. Evaluate recognitions
-                recognitionEvaluationResult = evaluateRecognitions(recognizedText); // TODO: add ground truth
+                recognitionEvaluationResult = evaluateRecognitions(recognizedText, groundTruthTextboxes); // TODO: add ground truth
 
                 // 6. Calculate runtimes
                 ms_tot = end_rec - start_det;
@@ -240,8 +242,12 @@ public class Evaluator {
         }
     }
 
-    private RecognitionEvaluationResult evaluateRecognitions(List<String> recognizedText, HashMap<String, List<Tuple2<Textbox, String>>> groundTruthTextboxes) {
+    private RecognitionEvaluationResult evaluateRecognitions(List<String> recognizedText, HashMap<String, List<Textbox>> groundTruthTextboxes) {
         // TODO (renato): implement me
+        System.out.println("Found items:");
+        for (String word : recognizedText) {
+            System.out.println(" - " + word);
+        }
         return new RecognitionEvaluationResult(1.0d, 1.0d);
     }
 
@@ -389,7 +395,7 @@ public class Evaluator {
 
     public static void main(String[] args) {
         Evaluator evaluator = new Evaluator();
-        evaluator.evaluateDetectionOnIncidentalSceneText();
+        evaluator.evaluateOnIncidentalSceneText();
 
 
     }
