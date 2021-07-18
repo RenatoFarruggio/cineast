@@ -158,7 +158,7 @@ public class Evaluator {
 
                 // 4. Text recognition on ground truth boxes
                 start_rec = System.currentTimeMillis();
-                List<String> recognizedText = inferenceModel.recognition(img, groundTruthDetectedObjects);  // On Ground Truth
+                List<String> recognizedText = inferenceModel.recognition(img, groundTruthWithTextDetectedObjects);  // On Ground Truth
                 end_rec = System.currentTimeMillis();
 
                 // 5. Evaluate detections
@@ -167,7 +167,7 @@ public class Evaluator {
                 detectionEvaluationResult = evaluateDetections(img, detectedBoxes, groundTruthDetectedObjects);
 
                 // 6. Evaluate recognitions
-                recognitionEvaluationResult = evaluateRecognitions(recognizedText, groundTruthDetectedObjects); // TODO: add ground truth
+                recognitionEvaluationResult = evaluateRecognitions(recognizedText, groundTruthWithTextDetectedObjects); // TODO: add ground truth
 
                 // 7. Calculate runtimes
                 ms_tot = end_rec - start_det;
@@ -277,13 +277,32 @@ public class Evaluator {
     }
 
     private RecognitionEvaluationResult evaluateRecognitions(List<String> recognizedText, DetectedObjects groundTruthDetectedObjects) {
-        // TODO: implement me
-        //System.out.println("Found items:");
-        for (String word : recognizedText) {
-            //System.out.println(" - " + word);
+        if (recognizedText.size() != groundTruthDetectedObjects.getNumberOfObjects()) {
+            LOGGER.error("Recognized Text and ground truth with text should have equal length. " +
+                    "RecognizedText has size " + recognizedText.size() + " and groundTruth has size " +
+                    groundTruthDetectedObjects.getNumberOfObjects());
+        }
+        int size = recognizedText.size();
+
+        if (size == 0) {
+            return new RecognitionEvaluationResult(1.0, 1.0);
         }
 
-        return new RecognitionEvaluationResult(1.0d, 1.0d);
+        double avgIOU = 0;
+        double avgJaccardTrigram = 0;
+
+        for (int i = 0; i < size; i++) {
+            String recognized = recognizedText.get(i);
+            String groundTruth = groundTruthDetectedObjects.item(i).getClassName();
+
+            avgIOU += Distances.iou(recognized, groundTruth);
+            avgJaccardTrigram += Distances.jaccardTrigramDistance(recognized, groundTruth);
+        }
+
+        avgIOU /= size;
+        avgJaccardTrigram /= size;
+
+        return new RecognitionEvaluationResult(avgIOU, avgJaccardTrigram);
     }
 
     /*
