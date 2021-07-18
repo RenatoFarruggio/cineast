@@ -50,18 +50,6 @@ public class ImageHandler {
         graph.dispose();
     }
 
-    public static void drawRectangleRelative(BufferedImage img, double xmin, double xmax, double ymin, double ymax, Color color) {
-        int img_width = img.getWidth();
-        int img_height = img.getHeight();
-        assert xmax + ymax <= 2;  // efficient way of checking
-        // that the values are probably in the interval [0,1].
-        xmin *= img_width;
-        xmax *= img_width;
-        ymin *= img_height;
-        ymax *= img_height;
-        drawRectangle(img, (int) xmin, (int) xmax, (int) ymin, (int) ymax, color);
-    }
-
     public static void drawText(BufferedImage img, String str, int startposX, int startposY, Color color) {
         // TODO: add background color
         Graphics2D graph = img.createGraphics();

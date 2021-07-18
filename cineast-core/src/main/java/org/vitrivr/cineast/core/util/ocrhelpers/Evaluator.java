@@ -3,8 +3,11 @@ package org.vitrivr.cineast.core.util.ocrhelpers;
 // TODO: remove all camel cases
 // TODO: add rotation model
 
+import ai.djl.modality.Classifications;
 import ai.djl.modality.cv.Image;
 import ai.djl.modality.cv.output.DetectedObjects;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -15,7 +18,8 @@ import java.util.*;
 import java.util.List;
 
 
-/* ***   FINAL CSV   ***
+// TODO: update CSV description
+/* ***  CSV   ***
 
 Information about picture
  - imageName
@@ -26,7 +30,7 @@ Information about time
  - msRec
  - msTot
 
-DETECTIONS:
+Detections:
 Information about how many shapes were detected
  - tp, fn, fp
 
@@ -40,32 +44,9 @@ jaccard distance (on characters), i.e. iou
 
 
 public class Evaluator {
+    private static final Logger LOGGER = LogManager.getLogger();
 
-    private class DetectionEvaluationResult {
-        double avgIOU;      // intersection over union
-        Set<Textbox> tp, fn, fp;  // true positives, false negatives, false positives
 
-        DetectionEvaluationResult(double avgIOU, Set<Textbox> tp, Set<Textbox> fn, Set<Textbox> fp) {
-            this.avgIOU = avgIOU;
-            this.tp = tp;
-            this.fn = fn;
-            this.fp = fp;
-        }
-    }
-
-    private class RecognitionEvaluationResult {
-        double iou, jaccard_trigram_distance;
-
-        /**
-         *
-         * @param iou  The intersection over union distance of single letters
-         * @param jaccardTrigramDistance
-         */
-        RecognitionEvaluationResult(double iou, double jaccardTrigramDistance) {
-            this.iou = iou;
-            this.jaccard_trigram_distance = jaccardTrigramDistance; // würg
-        }
-    }
 
     /**
      * Creates a csv file containing:
@@ -90,7 +71,7 @@ public class Evaluator {
         final String file_name_results = "resultsIncidentalSceneText.csv";
         final String path_to_images = "C:\\Users\\Renato\\Downloads\\IncidentalSceneText\\test\\ch4_test_images";
         final String path_to_ground_truth = "C:\\Users\\Renato\\Downloads\\IncidentalSceneText\\test\\Challenge4_Test_Task1_GT";
-        final String path_to_output = "evaluations/";
+        final String path_to_output = "output/";
         final boolean save_output_images = true;
 
         File img_folder = new File(path_to_images);
@@ -103,7 +84,15 @@ public class Evaluator {
         // I want: img_1, img_2, img_3, ...
         Arrays.sort(imageNames);
 
-        InferenceModel inferenceModel = new InferenceModel();
+        File detectionModel = new File(Paths.get("resources", "OCR-Models", "det_db.zip").toString());
+        File recognitionModel = new File(Paths.get("resources", "OCR-Models", "rec_crnn.zip").toString());
+        if (!(detectionModel.exists() && recognitionModel.exists())) {
+            LOGGER.error("Please make sure that the ocr models are downloaded. Run './gradlew getExternalResources' to download them.");
+        }
+        System.out.println("The following error messages aren't actually errors.");
+        // I just don't know how to get rid of them.
+        InferenceModel inferenceModel = new InferenceModel(detectionModel, recognitionModel);
+        System.out.println("You can ignore the above error message.");
 
         try (Writer w = new FileWriter(file_name_results)) {
             //try (Reader r = new FileReader(ground_truth))
@@ -124,10 +113,12 @@ public class Evaluator {
             HashMap<String, List<Textbox>> groundTruthTextboxes = getGroundTruthTextboxes(path_to_ground_truth);
             DetectedObjects detectedBoxes;
 
-            // PIPELINE
+            // PIPELINE //
             for (String imageName : imageNames) {
-                // 1. Load image
                 Path imagePath = Paths.get(path_to_images,imageName);
+                Path groundTruthFilePath = Paths.get(path_to_ground_truth, "gt_" + imageName.split("\\.")[0] + ".txt");
+
+                // 1. Load image
                 img = inferenceModel.loadImage(imagePath);
 
                 // 2. Text detection
@@ -135,58 +126,87 @@ public class Evaluator {
                 detectedBoxes = inferenceModel.detection(img);
                 end_det = System.currentTimeMillis();
 
-                // 3. Text recognition
+                /*
+                System.out.println("// Detections \\\\");
+                for (Classifications.Classification classification : detectedBoxes.items()) {
+                    DetectedObjects.DetectedObject det = (DetectedObjects.DetectedObject) classification;
+                    System.out.println(det);
+                }
+                System.out.println("\\\\ Detections //");*/
+
+                // 3. Load ground truth boxes
+                DetectedObjects groundTruthDetectedObjects =
+                        IncidentalSceneTextLoader.GroundTruthDetectedObjectsFromTxtFile(
+                                groundTruthFilePath,
+                                img);
+                DetectedObjects groundTruthWithTextDetectedObjects = Converters.getGroundTruthWithTextFromGroundTruth(groundTruthDetectedObjects);
+
+                /*
+                System.out.println("// Ground Truth \\\\");
+                for (Classifications.Classification classification : groundTruthDetectedObjects.items()) {
+                    DetectedObjects.DetectedObject GTdetctedObject = (DetectedObjects.DetectedObject) classification;
+                    System.out.println(GTdetctedObject);
+                }
+                System.out.println("\\\\ Ground Truth //");
+
+                System.out.println("// Ground Truth with text \\\\");
+                for (Classifications.Classification classification : groundTruthWithTextDetectedObjects.items()) {
+                    DetectedObjects.DetectedObject GTdetctedObject = (DetectedObjects.DetectedObject) classification;
+                    System.out.println(GTdetctedObject);
+                }
+                System.out.println("\\\\ Ground Truth with text //");*/
+
+                // 4. Text recognition on ground truth boxes
                 start_rec = System.currentTimeMillis();
-                List<String> recognizedText = inferenceModel.recognition(img, detectedBoxes);
+                List<String> recognizedText = inferenceModel.recognition(img, groundTruthDetectedObjects);  // On Ground Truth
                 end_rec = System.currentTimeMillis();
 
-                // 4. Evaluate detections
+                // 5. Evaluate detections
                 System.out.println("Evaluating detections of img: " + imageName + " ...");
                 String key = imageName.split("\\.", 2)[0];
-                List<Textbox> gtTextboxList = groundTruthTextboxes.get(key);
-                detectionEvaluationResult = evaluateDetections(img, detectedBoxes, gtTextboxList);
+                detectionEvaluationResult = evaluateDetections(img, detectedBoxes, groundTruthDetectedObjects);
 
-                // 5. Evaluate recognitions
-                recognitionEvaluationResult = evaluateRecognitions(recognizedText, groundTruthTextboxes); // TODO: add ground truth
+                // 6. Evaluate recognitions
+                recognitionEvaluationResult = evaluateRecognitions(recognizedText, groundTruthDetectedObjects); // TODO: add ground truth
 
-                // 6. Calculate runtimes
+                // 7. Calculate runtimes
                 ms_tot = end_rec - start_det;
                 ms_det = end_det - start_det;
                 ms_rec = end_rec - start_rec;
 
-                // 7. Write data to file
+                // 8. Write data to file
                 String line = format_csv_line(imageName, img.getWidth(), img.getHeight(),
                         ms_det, ms_rec, ms_tot,
-                        detectionEvaluationResult.tp.size(),
-                        detectionEvaluationResult.fn.size(),
-                        detectionEvaluationResult.fp.size(),
+                        detectionEvaluationResult.getTp().size(),
+                        detectionEvaluationResult.getFn().size(),
+                        detectionEvaluationResult.getFp().size(),
                         detectionEvaluationResult.avgIOU,
                         recognitionEvaluationResult.iou,
-                        recognitionEvaluationResult.jaccard_trigram_distance);
+                        recognitionEvaluationResult.jaccardTrigramDistance);
                 csvWriter.write(line);
                 System.out.println(line);
 
-                // 8. Draw textboxes on the picture
+                // 9. Draw textboxes on the picture
                 BufferedImage bufferedImage = ImageHandler.loadImage(Paths.get(path_to_images,imageName).toString());
                 if (save_output_images) {
 
                     // Draw all boxes
-                    drawBoxes(
-                            bufferedImage,
-                            gtTextboxList,
-                            DRAWMODE.gt);
-                    drawBoxes(
-                            bufferedImage,
-                            List.copyOf(detectionEvaluationResult.fn),
-                            DRAWMODE.fn);
-                    drawBoxes(
-                            bufferedImage,
-                            List.copyOf(detectionEvaluationResult.fp),
-                            DRAWMODE.fp);
-                    drawBoxes(
-                            bufferedImage,
-                            List.copyOf(detectionEvaluationResult.tp),
-                            DRAWMODE.tp);
+                    drawDetectedObjects(bufferedImage,
+                                        detectionEvaluationResult.getFn(),
+                                        DRAWMODE.fn);
+
+                    drawDetectedObjects(bufferedImage,
+                                        detectionEvaluationResult.getFp(),
+                                        DRAWMODE.fp);
+
+                    drawDetectedObjects(bufferedImage,
+                                        detectionEvaluationResult.getTp(),
+                                        DRAWMODE.tp);
+
+                    drawDetectedObjects(bufferedImage,
+                                        detectionEvaluationResult.getGtDetected(),
+                                        DRAWMODE.gtDetected);
+
 
                     // Draw a color legend
                     drawColorLegend(bufferedImage);
@@ -208,11 +228,25 @@ public class Evaluator {
 
     }
 
-    private void drawBoxes(BufferedImage img, List<Textbox> textboxes, DRAWMODE mode) { // e.g.: "evaluations/", "img_2.png"
+    private void drawBoxes(BufferedImage img, List<Textbox> textboxes, DRAWMODE mode) {
 
         Color color = DRAWMODE.getColor(mode);
 
         for (Textbox textbox : textboxes) {
+            ImageHandler.drawRectangle(img,
+                    textbox.xMin,
+                    textbox.xMax,
+                    textbox.yMin,
+                    textbox.yMax,
+                    color);
+        }
+    }
+
+    private void drawDetectedObjects(BufferedImage img, Set<DetectedObjects.DetectedObject> detectedObjects, DRAWMODE mode) {
+        Color color = DRAWMODE.getColor(mode);
+
+        for (DetectedObjects.DetectedObject detectedObject : detectedObjects) {
+            Textbox textbox = Textbox.fromDetectedObject_extended(detectedObject, img.getWidth(), img.getHeight());
             ImageHandler.drawRectangle(img,
                     textbox.xMin,
                     textbox.xMax,
@@ -231,7 +265,7 @@ public class Evaluator {
                 Arrays.asList(
                         DRAWMODE.tp,
                         DRAWMODE.fp,
-                        DRAWMODE.gt,
+                        DRAWMODE.gtDetected,
                         DRAWMODE.fn));
         Collections.reverse(order);
 
@@ -242,19 +276,56 @@ public class Evaluator {
         }
     }
 
-    private RecognitionEvaluationResult evaluateRecognitions(List<String> recognizedText, HashMap<String, List<Textbox>> groundTruthTextboxes) {
-        // TODO (renato): implement me
-        System.out.println("Found items:");
+    private RecognitionEvaluationResult evaluateRecognitions(List<String> recognizedText, DetectedObjects groundTruthDetectedObjects) {
+        // TODO: implement me
+        //System.out.println("Found items:");
         for (String word : recognizedText) {
-            System.out.println(" - " + word);
+            //System.out.println(" - " + word);
         }
+
         return new RecognitionEvaluationResult(1.0d, 1.0d);
     }
 
+    /*
+    private HashMap<String, DetectedObjects> getGroundTruthDetectedObjects(String path_to_ground_truth) {
+        // TODO: implement me
+        HashMap<String, DetectedObjects> hashMap = new HashMap<>();
+        File gt_folder = new File(path_to_ground_truth);
+        String[] files = gt_folder.list((dir, name) -> name.endsWith(".txt"));
+        List<String> textList = new ArrayList<>();
+        List<Double> probabilityList = new ArrayList<>();
+        List<BoundingBox> boundingBoxList = new ArrayList<>();
+        for (String fileName : files) {
+            List<Textbox> list = new ArrayList<>();
+            File file = new File(Paths.get(path_to_ground_truth,fileName).toString());
+            String imgName = (fileName.split("_", 2)[1]).split("\\.", 2)[0];
+
+            final Scanner s;
+
+            textList.clear();
+            probabilityList.clear();
+            boundingBoxList.clear();
+
+            try {
+                s = new Scanner(file);
+                while(s.hasNextLine()) {
+                    final String line = s.nextLine();
+                    rwedhjbkjrkdgrfd
+                    list.add(Textbox.fromIncidentalSceneTextTXT(line));
+                }
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+            hashMap.put(imgName, new DetectedObjects(textList, probabilityList, boundingBoxList));
+        }
+        return hashMap;
+    }*/
+
     private HashMap<String, List<Textbox>> getGroundTruthTextboxes(String path_to_ground_truth) {
-        // pic: img_1.jpg
-        // gt : gt_img_1.txt
-        // key: img_1
+        // pic:     img_1.jpg
+        // gt :     gt_img_1.txt
+        // key:     img_1
+        // imgName: img_1
         HashMap<String, List<Textbox>> hashmap = new HashMap<>();
         File gt_folder = new File(path_to_ground_truth);
         String[] files = gt_folder.list((dir, name) -> name.endsWith(".txt"));
@@ -264,10 +335,12 @@ public class Evaluator {
             String imgName = (fileName.split("_", 2)[1]).split("\\.", 2)[0];
 
             final Scanner s;
+
             try {
                 s = new Scanner(file);
                 while(s.hasNextLine()) {
                     final String line = s.nextLine();
+
                     list.add(Textbox.fromIncidentalSceneTextTXT(line));
                 }
             } catch (FileNotFoundException e) {
@@ -279,37 +352,36 @@ public class Evaluator {
         return hashmap;
     }
 
-    private DetectionEvaluationResult evaluateDetections(Image img, DetectedObjects detectedObjects, List<Textbox> groundTruthTextboxes) {
-        int size = detectedObjects.getNumberOfObjects();
+    private DetectionEvaluationResult evaluateDetections(Image img, DetectedObjects detectedObjects, DetectedObjects groundTruthDetectedObjects) {
+        List<DetectedObjects.DetectedObject> detectedObjectsList = Converters.detectedObjects2listOfDetectedObject(detectedObjects);
+        List<DetectedObjects.DetectedObject> groundTruthDetectedObjectsList = Converters.detectedObjects2listOfDetectedObject(groundTruthDetectedObjects);
 
-        Set<Textbox> tp = new HashSet<>();
-        Set<Textbox> fn = new HashSet<>();
-        Set<Textbox> fp = new HashSet<>();
-        // TODO (renato): return foundBoxes aswell, i.e. add it to DetectionEvaluationResult
+        Set<DetectedObjects.DetectedObject> fp = new HashSet<>(detectedObjectsList);
+        Set<DetectedObjects.DetectedObject> fn = new HashSet<>(groundTruthDetectedObjectsList);
 
         double avgIOU = 0;
-        Set<Textbox> foundBoxes = new HashSet<>();
 
-        List<Textbox> detectedTextboxes = Converters.DetectedObjects2ListOfTextboxes(detectedObjects, img.getWidth(), img.getHeight());
-        int i = 0;
-        for (Textbox gtBox : groundTruthTextboxes) {
+        HashMap<DetectedObjects.DetectedObject, DetectedObjects.DetectedObject> mostFittingGroundTruths = new HashMap<>();
+        for (DetectedObjects.DetectedObject groundTruthDetectedObject : groundTruthDetectedObjectsList) {
+            Textbox gtBox = Textbox.fromDetectedObject_extended(groundTruthDetectedObject, img.getWidth(), img.getHeight());
+
             double maxIoU = 0;
-            Textbox fittingTextbox = null;
+            DetectedObjects.DetectedObject fittingObject = null;
 
+            for (DetectedObjects.DetectedObject detectedObject : detectedObjectsList) {
+                Textbox detectedTextbox = Textbox.fromDetectedObject_extended(detectedObject, img.getWidth(), img.getHeight());
 
-            for (Textbox detectedTextbox : detectedTextboxes) {
                 double iou = gtBox.getIoU(detectedTextbox);
                 if (iou > maxIoU) {
                     maxIoU = iou;
-                    fittingTextbox = detectedTextbox;
+                    fittingObject = detectedObject;
                 }
             }
 
-            if (fittingTextbox != null) {
-                tp.add(fittingTextbox);
-                foundBoxes.add(gtBox);
-            } else {
-                fn.add(gtBox);
+            if (fittingObject != null) {
+                mostFittingGroundTruths.put(fittingObject, groundTruthDetectedObject);
+                fn.remove(groundTruthDetectedObject);
+                fp.remove(fittingObject);
             }
 
 
@@ -317,23 +389,15 @@ public class Evaluator {
 
         }
 
-        if (tp.isEmpty()) {
+        if (mostFittingGroundTruths.values().isEmpty())
             avgIOU = 0;
-        } else {
-            avgIOU /= tp.size();
-        }
-        detectedTextboxes.removeAll(tp);
-        fp = Set.copyOf(detectedTextboxes);
+        else
+            avgIOU /= mostFittingGroundTruths.values().size();
+
+        Set<DetectedObjects.DetectedObject> tp = new HashSet<>(mostFittingGroundTruths.keySet());
 
 
-        //System.out.println("average IOU: " + avgIOU);
-        //System.out.println("tp: " + tp.size());
-        //System.out.println("fn: " + fn.size());
-        //System.out.println("fp: " + fp.size());
-
-        //System.out.println("=================");
-
-        return new DetectionEvaluationResult(avgIOU, tp, fn, fp);
+        return new DetectionEvaluationResult(avgIOU, tp, fn, fp, mostFittingGroundTruths);
     }
 
     private String format_csv_line(String image_name,

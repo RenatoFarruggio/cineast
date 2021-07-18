@@ -13,7 +13,7 @@ import java.util.List;
  * A Textbox defines a textbox of a picture.
  * The values refer to the actual absolute pixel position on the picture.
  */
-// TODO (renato): change to have width and height
+// TODO: change to have width and height
 public class Textbox {
     int xMin, xMax;
     int yMin, yMax;

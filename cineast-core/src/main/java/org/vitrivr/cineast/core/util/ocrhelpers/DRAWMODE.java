@@ -3,16 +3,17 @@ package org.vitrivr.cineast.core.util.ocrhelpers;
 import java.awt.Color;
 
 public enum DRAWMODE {
-    gt,  // TODO (renato): rename to gtDetected
+    gt,
     tp,
     fn,
-    fp;
+    fp,
+    gtDetected;
 
     public static Color getColor(DRAWMODE mode) {
         Color color = Color.WHITE; // default, indicates that this mode has no color assigned
         switch (mode) {
             case gt:
-                color = Color.lightGray;  break;
+                color = Color.MAGENTA;  break;
 
             case tp:
                 color = Color.GREEN;   break;
@@ -22,6 +23,10 @@ public enum DRAWMODE {
 
             case fp:
                 color = Color.RED;   break;
+
+            case gtDetected:
+                color = Color.lightGray;   break;
+
         }
         return color;
     }
@@ -40,6 +45,9 @@ public enum DRAWMODE {
                 break;
             case fp:
                 descr = "[fp] Incorrectly detected";
+                break;
+            case gtDetected:
+                descr = "[gtDetected] Ground Truth Found";
                 break;
         }
         return descr;
