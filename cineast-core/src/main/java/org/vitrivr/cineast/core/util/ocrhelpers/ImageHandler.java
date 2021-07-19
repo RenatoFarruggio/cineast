@@ -54,6 +54,7 @@ public class ImageHandler {
         // TODO: add background color
         Graphics2D graph = img.createGraphics();
         graph.setColor(color);
+        graph.setFont(new Font("Courier New",Font.BOLD,20));
         graph.drawString(str, startposX, startposY);
         graph.dispose();
     }

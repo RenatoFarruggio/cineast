@@ -174,7 +174,7 @@ public class Evaluator {
                 detectionEvaluationResult = evaluateDetections(img, detectedBoxes, groundTruthDetectedObjects);
 
                 // 6. Evaluate recognitions
-                recognitionEvaluationResult = evaluateRecognitions(recognizedText, groundTruthWithTextDetectedObjects); // TODO: add ground truth
+                recognitionEvaluationResult = evaluateRecognitions(img, recognizedText, groundTruthWithTextDetectedObjects);
 
                 // 7. Calculate runtimes
                 ms_tot = end_rec - start_det;
@@ -194,7 +194,7 @@ public class Evaluator {
                 csvWriter.write(line);
                 //System.out.println(line);
 
-                // 9. Draw textboxes on the picture
+                // 9. Draw textboxes of detections on the picture
                 BufferedImage bufferedImage = ImageHandler.loadImage(Paths.get(path_to_images,imageName).toString());
                 if (save_output_images) {
 
@@ -224,6 +224,22 @@ public class Evaluator {
                     String type = imageName.split("\\.")[1];  // e.g.: jpg
 
                     ImageHandler.saveImage(bufferedImage, path_to_output, name + "_detection_result", type);
+                }
+
+                // 10. Draw textboxes of recognitions on the picture
+                bufferedImage = ImageHandler.loadImage(Paths.get(path_to_images,imageName).toString());
+                if (save_output_images) {
+
+                    // Draw the boxes
+                    for (TextboxWithText textboxWithText : recognitionEvaluationResult.textboxesWithText) {
+                        textboxWithText.drawOnImage(bufferedImage);
+                    }
+
+                    // Save image
+                    String name = imageName.split("\\.")[0];  // e.g.: img_1
+                    String type = imageName.split("\\.")[1];  // e.g.: jpg
+
+                    ImageHandler.saveImage(bufferedImage, path_to_output, name + "_recognition_result", type);
                 }
 
             }
@@ -266,7 +282,7 @@ public class Evaluator {
 
     private void drawColorLegend(BufferedImage img) {
         int linespace = 2;
-        int textheight = 10; // THIS DOES NOT CHANGE THE TEXT SIZE
+        int textheight = 20; // THIS DOES NOT CHANGE THE TEXT SIZE
 
 
         List<DRAWMODE> order = new ArrayList<DRAWMODE>(
@@ -284,16 +300,17 @@ public class Evaluator {
         }
     }
 
-    private RecognitionEvaluationResult evaluateRecognitions(List<String> recognizedText, DetectedObjects groundTruthDetectedObjects) {
+    private RecognitionEvaluationResult evaluateRecognitions(Image img, List<String> recognizedText, DetectedObjects groundTruthDetectedObjects) {
         if (recognizedText.size() != groundTruthDetectedObjects.getNumberOfObjects()) {
             LOGGER.error("Recognized Text and ground truth with text should have equal length. " +
                     "RecognizedText has size " + recognizedText.size() + " and groundTruth has size " +
                     groundTruthDetectedObjects.getNumberOfObjects());
         }
         int size = recognizedText.size();
+        List<TextboxWithText> textboxesWithText = new ArrayList<>();
 
         if (size == 0) {
-            return new RecognitionEvaluationResult(1.0, 1.0, 0);
+            return new RecognitionEvaluationResult(1.0, 1.0, 0, textboxesWithText);
         }
 
         double avgIOU = 0;
@@ -301,16 +318,21 @@ public class Evaluator {
 
         for (int i = 0; i < size; i++) {
             String recognized = recognizedText.get(i);
-            String groundTruth = groundTruthDetectedObjects.item(i).getClassName();
+            DetectedObjects.DetectedObject detectedObjectGroundTruth = groundTruthDetectedObjects.item(i);
+            String groundTruth = detectedObjectGroundTruth.getClassName();
 
             avgIOU += Distances.iou(recognized, groundTruth);
             avgJaccardTrigram += Distances.jaccardTrigramDistance(recognized, groundTruth);
+
+            Textbox textbox = Textbox.fromDetectedObject_extended(detectedObjectGroundTruth, img.getWidth(), img.getHeight());
+            TextboxWithText textboxWithText = new TextboxWithText(textbox,groundTruth,recognized);
+            textboxesWithText.add(textboxWithText);
         }
 
         avgIOU = (avgIOU+1) / (size+1);  // avg with laplacian smoothing
         avgJaccardTrigram = (avgJaccardTrigram+1) / (size+1);  // avg with laplacian smoothing
 
-        return new RecognitionEvaluationResult(avgIOU, avgJaccardTrigram, size);
+        return new RecognitionEvaluationResult(avgIOU, avgJaccardTrigram, size, textboxesWithText);
     }
 
     private HashMap<String, List<Textbox>> getGroundTruthTextboxes(String path_to_ground_truth) {
