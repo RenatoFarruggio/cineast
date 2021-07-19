@@ -10,3 +10,5 @@ http://data.vitrivr.org/VisualTextCoEmbedding/text-co-embedding.tar.gz,resources
 http://data.vitrivr.org/VisualTextCoEmbedding/visual-co-embedding.tar.gz,resources/VisualTextCoEmbedding/visual-co-embedding.tar.gz
 https://tfhub.dev/google/universal-sentence-encoder/4?tf-hub-format=compressed,resources/VisualTextCoEmbedding/universal-sentence-encoder_4.tar.gz
 http://data.vitrivr.org/VisualTextCoEmbedding/inception_resnet_v2_weights_tf_dim_ordering_tf_kernels_notop.tar.gz,resources/VisualTextCoEmbedding/inception_resnet_v2_weights_tf_dim_ordering_tf_kernels_notop.tar.gz
+https://resources.djl.ai/test-models/paddleOCR/mobile/det_db.zip,resources/OCR-Models/det_db.zip
+https://resources.djl.ai/test-models/paddleOCR/mobile/rec_crnn.zip,resources/OCR-Models/rec_crnn.zip

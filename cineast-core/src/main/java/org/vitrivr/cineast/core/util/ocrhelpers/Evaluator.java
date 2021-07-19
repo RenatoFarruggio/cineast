@@ -89,7 +89,7 @@ public class Evaluator {
         File detectionModel = new File(Paths.get("resources", "OCR-Models", "det_db.zip").toString());
         File recognitionModel = new File(Paths.get("resources", "OCR-Models", "rec_crnn.zip").toString());
         if (!(detectionModel.exists() && recognitionModel.exists())) {
-            LOGGER.error("Please make sure that the ocr models are downloaded. Run './gradlew getExternalResources' to download them.");
+            LOGGER.error("Please make sure that the ocr models are downloaded. Run './gradlew getExternalFiles' to download them.");
         }
         System.out.println("The following error messages aren't actually errors.");
         // I just don't know how to get rid of them.
