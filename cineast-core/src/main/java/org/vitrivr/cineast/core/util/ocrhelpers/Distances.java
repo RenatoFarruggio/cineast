@@ -43,9 +43,6 @@ public class Distances {
         if (word1.equals("") && word2.equals(""))
             return 1.0d;
 
-        if (word1.equals("") || word2.equals(""))
-            return 0.0d;
-
         Set<String> set1 = trigrams(word1);
         Set<String> set2 = trigrams(word2);
 
@@ -62,6 +59,11 @@ public class Distances {
         HashSet<String> trigrams = new HashSet<>();
 
         word = word.toLowerCase();
+
+        if (word.length() == 0) {
+            return trigrams;
+        }
+
         if (word.length() == 1) {
             trigrams.add("##" + word);
             trigrams.add("#" + word + "#");
