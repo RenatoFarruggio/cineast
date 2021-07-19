@@ -1,16 +1,19 @@
 package org.vitrivr.cineast.core.util.ocrhelpers;
 
 public class RecognitionEvaluationResult {
-    double iou, jaccardTrigramDistance;
+    double avgIOU, avgJaccardTrigramDistance;
+    int numberOfConsideredGroundTruths;
 
     /**
      *
-     * @param iou  The intersection over union distance of single letters
-     * @param jaccardTrigramDistance
+     * @param avgIOU The intersection over union of single letters
+     * @param avgJaccardTrigramDistance The average jaccard trigram distance
+     * @param numberOfConsideredGroundTruths The number of textboxes who had text assigned in the GT
      */
-    RecognitionEvaluationResult(double iou, double jaccardTrigramDistance) {
-        this.iou = iou;
-        this.jaccardTrigramDistance = jaccardTrigramDistance;
+    RecognitionEvaluationResult(double avgIOU, double avgJaccardTrigramDistance, int numberOfConsideredGroundTruths) {
+        this.avgIOU = avgIOU;
+        this.avgJaccardTrigramDistance = avgJaccardTrigramDistance;
+        this.numberOfConsideredGroundTruths = numberOfConsideredGroundTruths;
     }
 }
 

@@ -2,8 +2,8 @@ package org.vitrivr.cineast.core.util.ocrhelpers;
 
 // TODO: remove all camel cases
 // TODO: add rotation model
+// FIXME: The ground truth text boxes are sometimes not shown
 
-import ai.djl.modality.Classifications;
 import ai.djl.modality.cv.Image;
 import ai.djl.modality.cv.output.DetectedObjects;
 import org.apache.logging.log4j.LogManager;
@@ -46,25 +46,27 @@ jaccard distance (on characters), i.e. iou
 public class Evaluator {
     private static final Logger LOGGER = LogManager.getLogger();
 
-
-
     /**
      * Creates a csv file containing:
      *
-     *  image_name,     name of the image
-     *  x_res,          width of the image
-     *  y_res,          height of the image
-     *  ms_det,         time it took to do text detection
-     *  ms_rec,         time it took to recognize the text in all textboxes
-     *  ms_tot,         time it took to do text detection and text recognition
-     *  tp,             true positives: textboxes that were detected correctly
-     *  fn,             false negatives: textboxes in ground truth whose text was not detected
-     *  fp,             false positives: textboxes detected where there is no text
-     *  iou_avg,        average iou of detected textboxes: sum of all tp iou's divided by number of tp
-     *  jaccard_distance_recognition,
-     *                  intersection over union
-     *  jaccard_trigram_distance_recognition,
-     *                  sum of jaccard trigram distances between words found and words in ground truth
+     *  image_name,     The name of the image
+     *  x_res,          The width of the image
+     *  y_res,          The height of the image
+     *  ms_det,         The time it took to do text detection
+     *  ms_rec,         The time it took to recognize the text in all textboxes
+     *  ms_tot,         The time it took to do both text detection and text recognition
+     *  tp,             True positives: The set of <code>DetectedObject</code>s that were detected correctly
+     *  fn,             False negatives: The set of undetected ground truth <code>DetectedObject</code>s
+     *  fp,             False positives: The set of detected <code>DetectedObject</code>s where there is no corresponding ground truth box
+     *  gtDetected,     The set of detected ground truth <code>DetectedObject</code>s
+     *  iou_avg,        Average iou of the detected <code>DetectedObject</code>s:
+     *                      The sum of all iou's divided by number considered ground truths
+     *  jaccard_distance_recognition_avg,
+     *                  The average intersection over union of single letters in the recognition step
+     *  jaccard_trigram_distance_recognition_avg,
+     *                  The sum of jaccard trigram distances between words found and words in the ground truth
+     *  numberOfConsideredGroundTruths,
+     *                  The number of ground truth <code>DetectedObjects</code> that have text assigned to
      */
     public void evaluateOnIncidentalSceneText() {
         // These are user inputs. TODO: Implement argument builder
@@ -97,7 +99,7 @@ public class Evaluator {
         try (Writer w = new FileWriter(file_name_results)) {
             //try (Reader r = new FileReader(ground_truth))
             BufferedWriter csvWriter = new BufferedWriter(w);
-            csvWriter.append("image_name,x_res,y_res,ms_det,ms_rec,ms_tot,tp,fn,fp,iou_avg,jaccard_distance_recognition,jaccard_trigram_distance_recognition");
+            csvWriter.append("image_name,x_res,y_res,ms_det,ms_rec,ms_tot,tp,fn,fp,iou_detection_avg,iou_recognition_avg,jaccard_trigram_distance_recognition_avg,number_of_considered_ground_truths");
             csvWriter.append(System.lineSeparator());
 
             // Define variables
@@ -110,18 +112,30 @@ public class Evaluator {
 
             Image img;
 
-            HashMap<String, List<Textbox>> groundTruthTextboxes = getGroundTruthTextboxes(path_to_ground_truth);
+            int counter = 1;
+            int numberOfImages = imageNames.length;
+
+            //HashMap<String, List<Textbox>> groundTruthTextboxes = getGroundTruthTextboxes(path_to_ground_truth);
             DetectedObjects detectedBoxes;
 
             // PIPELINE //
             for (String imageName : imageNames) {
+                System.out.println("Processing image " + counter++ + "/" + numberOfImages + ": " + imageName + " ...");
+
                 Path imagePath = Paths.get(path_to_images,imageName);
                 Path groundTruthFilePath = Paths.get(path_to_ground_truth, "gt_" + imageName.split("\\.")[0] + ".txt");
 
                 // 1. Load image
                 img = inferenceModel.loadImage(imagePath);
 
-                // 2. Text detection
+                // 2. Load ground truth boxes
+                DetectedObjects groundTruthDetectedObjects =
+                        IncidentalSceneTextLoader.GroundTruthDetectedObjectsFromTxtFile(
+                                groundTruthFilePath,
+                                img);
+                DetectedObjects groundTruthWithTextDetectedObjects = Converters.getGroundTruthWithTextFromGroundTruth(groundTruthDetectedObjects);
+
+                // 3. Text detection
                 start_det = System.currentTimeMillis();
                 detectedBoxes = inferenceModel.detection(img);
                 end_det = System.currentTimeMillis();
@@ -133,13 +147,6 @@ public class Evaluator {
                     System.out.println(det);
                 }
                 System.out.println("\\\\ Detections //");*/
-
-                // 3. Load ground truth boxes
-                DetectedObjects groundTruthDetectedObjects =
-                        IncidentalSceneTextLoader.GroundTruthDetectedObjectsFromTxtFile(
-                                groundTruthFilePath,
-                                img);
-                DetectedObjects groundTruthWithTextDetectedObjects = Converters.getGroundTruthWithTextFromGroundTruth(groundTruthDetectedObjects);
 
                 /*
                 System.out.println("// Ground Truth \\\\");
@@ -162,7 +169,7 @@ public class Evaluator {
                 end_rec = System.currentTimeMillis();
 
                 // 5. Evaluate detections
-                System.out.println("Evaluating detections of img: " + imageName + " ...");
+                //System.out.println("Evaluating detections of img: " + imageName + " ...");
                 String key = imageName.split("\\.", 2)[0];
                 detectionEvaluationResult = evaluateDetections(img, detectedBoxes, groundTruthDetectedObjects);
 
@@ -181,10 +188,11 @@ public class Evaluator {
                         detectionEvaluationResult.getFn().size(),
                         detectionEvaluationResult.getFp().size(),
                         detectionEvaluationResult.avgIOU,
-                        recognitionEvaluationResult.iou,
-                        recognitionEvaluationResult.jaccardTrigramDistance);
+                        recognitionEvaluationResult.avgIOU,
+                        recognitionEvaluationResult.avgJaccardTrigramDistance,
+                        recognitionEvaluationResult.numberOfConsideredGroundTruths);
                 csvWriter.write(line);
-                System.out.println(line);
+                //System.out.println(line);
 
                 // 9. Draw textboxes on the picture
                 BufferedImage bufferedImage = ImageHandler.loadImage(Paths.get(path_to_images,imageName).toString());
@@ -285,7 +293,7 @@ public class Evaluator {
         int size = recognizedText.size();
 
         if (size == 0) {
-            return new RecognitionEvaluationResult(1.0, 1.0);
+            return new RecognitionEvaluationResult(1.0, 1.0, 0);
         }
 
         double avgIOU = 0;
@@ -299,46 +307,11 @@ public class Evaluator {
             avgJaccardTrigram += Distances.jaccardTrigramDistance(recognized, groundTruth);
         }
 
-        avgIOU /= size;
-        avgJaccardTrigram /= size;
+        avgIOU = (avgIOU+1) / (size+1);  // avg with laplacian smoothing
+        avgJaccardTrigram = (avgJaccardTrigram+1) / (size+1);  // avg with laplacian smoothing
 
-        return new RecognitionEvaluationResult(avgIOU, avgJaccardTrigram);
+        return new RecognitionEvaluationResult(avgIOU, avgJaccardTrigram, size);
     }
-
-    /*
-    private HashMap<String, DetectedObjects> getGroundTruthDetectedObjects(String path_to_ground_truth) {
-        // TODO: implement me
-        HashMap<String, DetectedObjects> hashMap = new HashMap<>();
-        File gt_folder = new File(path_to_ground_truth);
-        String[] files = gt_folder.list((dir, name) -> name.endsWith(".txt"));
-        List<String> textList = new ArrayList<>();
-        List<Double> probabilityList = new ArrayList<>();
-        List<BoundingBox> boundingBoxList = new ArrayList<>();
-        for (String fileName : files) {
-            List<Textbox> list = new ArrayList<>();
-            File file = new File(Paths.get(path_to_ground_truth,fileName).toString());
-            String imgName = (fileName.split("_", 2)[1]).split("\\.", 2)[0];
-
-            final Scanner s;
-
-            textList.clear();
-            probabilityList.clear();
-            boundingBoxList.clear();
-
-            try {
-                s = new Scanner(file);
-                while(s.hasNextLine()) {
-                    final String line = s.nextLine();
-                    rwedhjbkjrkdgrfd
-                    list.add(Textbox.fromIncidentalSceneTextTXT(line));
-                }
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            }
-            hashMap.put(imgName, new DetectedObjects(textList, probabilityList, boundingBoxList));
-        }
-        return hashMap;
-    }*/
 
     private HashMap<String, List<Textbox>> getGroundTruthTextboxes(String path_to_ground_truth) {
         // pic:     img_1.jpg
@@ -428,9 +401,10 @@ public class Evaluator {
                                    int tp,
                                    int fn,
                                    int fp,
-                                   double iou_avg,
-                                   double jaccard_distance_recognition,
-                                   double jaccard_trigram_distance_recognition)
+                                   double iou_detection_avg,
+                                   double iou_recognition_avg,
+                                   double jaccard_trigram_distance_recognition_avg,
+                                   int number_of_considered_ground_truths)
             throws IOException {
 
         StringBuilder stringBuilder = new StringBuilder();
@@ -462,14 +436,16 @@ public class Evaluator {
         stringBuilder.append(Integer.toString(fp));
         stringBuilder.append(",");
 
-        stringBuilder.append(Double.toString(iou_avg));
+        stringBuilder.append(String.format("%.2f", iou_detection_avg));
         stringBuilder.append(",");
 
-        stringBuilder.append(Double.toString(jaccard_distance_recognition));
+        stringBuilder.append(String.format("%.2f", iou_recognition_avg));
         stringBuilder.append(",");
 
-        stringBuilder.append(Double.toString(jaccard_trigram_distance_recognition));
+        stringBuilder.append(String.format("%.2f", jaccard_trigram_distance_recognition_avg));
+        stringBuilder.append(",");
 
+        stringBuilder.append(Integer.toString(number_of_considered_ground_truths));
 
         stringBuilder.append(System.lineSeparator());
 

@@ -18,6 +18,8 @@ public class Textbox {
     int xMin, xMax;
     int yMin, yMax;
 
+    public Textbox() { /* DON'T USE THE DEFAULT CONSTRUCTOR */ }
+
     private Textbox(int xMin, int xMax, int yMin, int yMax) {
         this.xMin = xMin;
         this.xMax = xMax;
@@ -82,9 +84,9 @@ public class Textbox {
 
 
         int xMin = (int)(newX * imageWidth);
-        int xMax = (int)(width * imageWidth) + xMin;
+        int xMax = (int)(newWidth * imageWidth) + xMin;
         int yMin = (int)(newY * imageHeight);
-        int yMax = (int)(height * imageHeight) + yMin;
+        int yMax = (int)(newHeight * imageHeight) + yMin;
         assert xMin < xMax;
         assert yMin < yMax;
 

@@ -29,12 +29,12 @@ public class DetectionEvaluationResult {
         return this.fn;
     }
 
-    DetectedObjects.DetectedObject getMostFittingGroundTruth(DetectedObjects.DetectedObject foundObject) {
-        return mostFittingGroundTruths.get(foundObject);
-    }
-
     Set<DetectedObjects.DetectedObject> getGtDetected() {
         return new HashSet<>(mostFittingGroundTruths.values());
+    }
+
+    DetectedObjects.DetectedObject getMostFittingGroundTruth(DetectedObjects.DetectedObject foundObject) {
+        return mostFittingGroundTruths.get(foundObject);
     }
 
 }
