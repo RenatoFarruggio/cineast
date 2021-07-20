@@ -7,6 +7,8 @@ import java.util.*;
 public class DetectionEvaluationResult {
     double avgIOU;
     private final Set<DetectedObjects.DetectedObject> tp, fn, fp;
+    private int tpAndFpAreEmpty;  // 1 if both sets are empty, 0 otherwise
+    private int tpAndFnAreEmpty;  // 1 if both sets are empty, 0 otherwise
     private final Map<DetectedObjects.DetectedObject, DetectedObjects.DetectedObject> mostFittingGroundTruths;
 
     DetectionEvaluationResult(double avgIOU, Set<DetectedObjects.DetectedObject> tp, Set<DetectedObjects.DetectedObject> fn, Set<DetectedObjects.DetectedObject> fp, HashMap<DetectedObjects.DetectedObject, DetectedObjects.DetectedObject> mostFittingGroundTruths) {
@@ -14,6 +16,8 @@ public class DetectionEvaluationResult {
         this.tp = tp;
         this.fn = fn;
         this.fp = fp;
+        this.tpAndFpAreEmpty = (tp.isEmpty() && fp.isEmpty()) ? 1 : 0;
+        this.tpAndFnAreEmpty = (tp.isEmpty() && fn.isEmpty()) ? 1 : 0;
         this.mostFittingGroundTruths = mostFittingGroundTruths;
     }
 
@@ -31,6 +35,14 @@ public class DetectionEvaluationResult {
 
     Set<DetectedObjects.DetectedObject> getGtDetected() {
         return new HashSet<>(mostFittingGroundTruths.values());
+    }
+
+    int getTpAndFpAreEmpty() {
+        return this.tpAndFpAreEmpty;
+    }
+
+    int getTpAndFnAreEmpty() {
+        return this.tpAndFnAreEmpty;
     }
 
     DetectedObjects.DetectedObject getMostFittingGroundTruth(DetectedObjects.DetectedObject foundObject) {

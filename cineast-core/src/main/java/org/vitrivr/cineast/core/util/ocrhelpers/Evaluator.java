@@ -3,6 +3,7 @@ package org.vitrivr.cineast.core.util.ocrhelpers;
 // TODO: remove all camel cases
 // TODO: add rotation model
 // FIXME: The ground truth text boxes are sometimes not shown
+// TODO: write gradle command for evaluating
 
 import ai.djl.modality.cv.Image;
 import ai.djl.modality.cv.output.DetectedObjects;
@@ -16,32 +17,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.List;
-
-
-// TODO: update CSV description
-/* ***  CSV   ***
-
-Information about picture
- - imageName
- - xResolution, yResolution
-
-Information about time
- - msDet
- - msRec
- - msTot
-
-Detections:
-Information about how many shapes were detected
- - tp, fn, fp
-
-Information about how good the detected shapes are overlapping with the ground truth
- - iouAverage
-
-RECOGNITIONS:
-jaccard trigram distance
-jaccard distance (on characters), i.e. iou
- */
-
 
 public class Evaluator {
     private static final Logger LOGGER = LogManager.getLogger();
@@ -58,23 +33,31 @@ public class Evaluator {
      *  tp,             True positives: The set of <code>DetectedObject</code>s that were detected correctly
      *  fn,             False negatives: The set of undetected ground truth <code>DetectedObject</code>s
      *  fp,             False positives: The set of detected <code>DetectedObject</code>s where there is no corresponding ground truth box
+     *  tpAndFpAreEmpty A flag which is 0 normally, and 1 if both tp and fp are empty
+     *  tpAndFnAreEmpty A flag which is 0 normally, and 1 if both tp and fn are empty
      *  gtDetected,     The set of detected ground truth <code>DetectedObject</code>s
      *  iou_avg,        Average iou of the detected <code>DetectedObject</code>s:
      *                      The sum of all iou's divided by number considered ground truths
      *  jaccard_distance_recognition_avg,
      *                  The average intersection over union of single letters in the recognition step
+     *  jaccard_distance_recognition_variance,
+     *                  The variance of the intersection over union of single letters in the recognition step
      *  jaccard_trigram_distance_recognition_avg,
      *                  The sum of jaccard trigram distances between words found and words in the ground truth
+     *  jaccard_trigram_distance_recognition_variance,
+     *                  The variance of the jaccard trigram distances between words found and words in the ground truth
      *  numberOfConsideredGroundTruths,
      *                  The number of ground truth <code>DetectedObjects</code> that have text assigned to
      */
-    public void evaluateOnIncidentalSceneText() {
+    public void evaluateOnIncidentalSceneText(int runNumber) {
         // These are user inputs. TODO: Implement argument builder
-        final String file_name_results = "resultsIncidentalSceneText.csv";
+        final String file_name_results = "resultsIncidentalSceneText_45" + runNumber + ".csv";
         final String path_to_images = "C:\\Users\\Renato\\Downloads\\IncidentalSceneText\\test\\ch4_test_images";
         final String path_to_ground_truth = "C:\\Users\\Renato\\Downloads\\IncidentalSceneText\\test\\Challenge4_Test_Task1_GT";
         final String path_to_output = "output/";
-        final boolean save_output_images = true;
+
+        final boolean save_output_images = false;
+        final double det_threshhold = 0.45;
 
         File img_folder = new File(path_to_images);
         String[] imageNames = img_folder.list((dir, name) -> name.endsWith(".jpg"));
@@ -99,7 +82,7 @@ public class Evaluator {
         try (Writer w = new FileWriter(file_name_results)) {
             //try (Reader r = new FileReader(ground_truth))
             BufferedWriter csvWriter = new BufferedWriter(w);
-            csvWriter.append("image_name,x_res,y_res,ms_det,ms_rec,ms_tot,tp,fn,fp,iou_detection_avg,iou_recognition_avg,jaccard_trigram_distance_recognition_avg,number_of_considered_ground_truths");
+            csvWriter.append("image_name,x_res,y_res,ms_det,ms_rec,ms_tot,tp,fn,fp,tpAndFpAreEmpty,tpAndFnAreEmpty,iou_detection_avg,iou_recognition_avg,iou_recognition_variance,jaccard_trigram_distance_recognition_avg,jaccard_trigram_distance_recognition_variance,number_of_considered_ground_truths");
             csvWriter.append(System.lineSeparator());
 
             // Define variables
@@ -120,7 +103,7 @@ public class Evaluator {
 
             // PIPELINE //
             for (String imageName : imageNames) {
-                System.out.println("Processing image " + counter++ + "/" + numberOfImages + ": " + imageName + " ...");
+                System.out.println("Evaluating model on image " + counter++ + "/" + numberOfImages + ": " + imageName + " ...");
 
                 Path imagePath = Paths.get(path_to_images,imageName);
                 Path groundTruthFilePath = Paths.get(path_to_ground_truth, "gt_" + imageName.split("\\.")[0] + ".txt");
@@ -171,7 +154,7 @@ public class Evaluator {
                 // 5. Evaluate detections
                 //System.out.println("Evaluating detections of img: " + imageName + " ...");
                 String key = imageName.split("\\.", 2)[0];
-                detectionEvaluationResult = evaluateDetections(img, detectedBoxes, groundTruthDetectedObjects);
+                detectionEvaluationResult = evaluateDetections(img, detectedBoxes, groundTruthDetectedObjects, det_threshhold);
 
                 // 6. Evaluate recognitions
                 recognitionEvaluationResult = evaluateRecognitions(img, recognizedText, groundTruthWithTextDetectedObjects);
@@ -187,9 +170,13 @@ public class Evaluator {
                         detectionEvaluationResult.getTp().size(),
                         detectionEvaluationResult.getFn().size(),
                         detectionEvaluationResult.getFp().size(),
+                        detectionEvaluationResult.getTpAndFpAreEmpty(),
+                        detectionEvaluationResult.getTpAndFnAreEmpty(),
                         detectionEvaluationResult.avgIOU,
-                        recognitionEvaluationResult.avgIOU,
-                        recognitionEvaluationResult.avgJaccardTrigramDistance,
+                        recognitionEvaluationResult.iouMean,
+                        recognitionEvaluationResult.iouVariance,
+                        recognitionEvaluationResult.trigramMean,
+                        recognitionEvaluationResult.trigramVariance,
                         recognitionEvaluationResult.numberOfConsideredGroundTruths);
                 csvWriter.write(line);
                 //System.out.println(line);
@@ -310,29 +297,54 @@ public class Evaluator {
         List<TextboxWithText> textboxesWithText = new ArrayList<>();
 
         if (size == 0) {
-            return new RecognitionEvaluationResult(1.0, 1.0, 0, textboxesWithText);
+            return new RecognitionEvaluationResult(1.0, 1.0,1.0, 1.0, 0, textboxesWithText);
         }
 
-        double avgIOU = 0;
-        double avgJaccardTrigram = 0;
+        List<Double> ious = new ArrayList<>();
+        List<Double> jaccardTrigramSimilarities = new ArrayList<>();
+
+        //double avgIOU = 0;
+        //double avgJaccardTrigram = 0;
 
         for (int i = 0; i < size; i++) {
             String recognized = recognizedText.get(i);
             DetectedObjects.DetectedObject detectedObjectGroundTruth = groundTruthDetectedObjects.item(i);
             String groundTruth = detectedObjectGroundTruth.getClassName();
 
-            avgIOU += Distances.iou(recognized, groundTruth);
-            avgJaccardTrigram += Distances.jaccardTrigramDistance(recognized, groundTruth);
+            ious.add(Distances.iou(recognized, groundTruth));
+            jaccardTrigramSimilarities.add(Distances.jaccardTrigramDistance(recognized, groundTruth));
 
             Textbox textbox = Textbox.fromDetectedObject_extended(detectedObjectGroundTruth, img.getWidth(), img.getHeight());
             TextboxWithText textboxWithText = new TextboxWithText(textbox,groundTruth,recognized);
             textboxesWithText.add(textboxWithText);
         }
 
-        avgIOU = (avgIOU+1) / (size+1);  // avg with laplacian smoothing
-        avgJaccardTrigram = (avgJaccardTrigram+1) / (size+1);  // avg with laplacian smoothing
+        double iouMean = getMean(ious);
+        double iouVariance = getVariance(ious, iouMean);
 
-        return new RecognitionEvaluationResult(avgIOU, avgJaccardTrigram, size, textboxesWithText);
+        double trigramMean = getMean(jaccardTrigramSimilarities);
+        double trigramVariance = getVariance(jaccardTrigramSimilarities, trigramMean);
+
+
+        return new RecognitionEvaluationResult(iouMean, iouVariance, trigramMean, trigramVariance, size, textboxesWithText);
+    }
+
+    private double getMean(List<Double> data) {
+        double mean = 0.0;
+        for (double d : data) {
+            mean += d;
+        }
+        mean /= data.size();
+        return mean;
+    }
+
+    private double getVariance(List<Double> data, double mean) {
+        double variance = 0;
+        for (double d : data) {
+            variance += Math.pow(d-mean, 2);
+        }
+        variance /= data.size();
+        return variance;
     }
 
     private HashMap<String, List<Textbox>> getGroundTruthTextboxes(String path_to_ground_truth) {
@@ -366,7 +378,7 @@ public class Evaluator {
         return hashmap;
     }
 
-    private DetectionEvaluationResult evaluateDetections(Image img, DetectedObjects detectedObjects, DetectedObjects groundTruthDetectedObjects) {
+    private DetectionEvaluationResult evaluateDetections(Image img, DetectedObjects detectedObjects, DetectedObjects groundTruthDetectedObjects, double det_threshhold) {
         List<DetectedObjects.DetectedObject> detectedObjectsList = Converters.detectedObjects2listOfDetectedObject(detectedObjects);
         List<DetectedObjects.DetectedObject> groundTruthDetectedObjectsList = Converters.detectedObjects2listOfDetectedObject(groundTruthDetectedObjects);
 
@@ -390,6 +402,11 @@ public class Evaluator {
                     maxIoU = iou;
                     fittingObject = detectedObject;
                 }
+            }
+
+            if (maxIoU < det_threshhold) {
+                fittingObject = null;
+                maxIoU = 0;
             }
 
             if (fittingObject != null) {
@@ -423,9 +440,13 @@ public class Evaluator {
                                    int tp,
                                    int fn,
                                    int fp,
+                                   int tpAndFpAreEmpty,
+                                   int tpAndFnAreEmpty,
                                    double iou_detection_avg,
                                    double iou_recognition_avg,
+                                   double iou_recognition_variance,
                                    double jaccard_trigram_distance_recognition_avg,
+                                   double jaccard_trigram_distance_recognition_variance,
                                    int number_of_considered_ground_truths)
             throws IOException {
 
@@ -458,13 +479,25 @@ public class Evaluator {
         stringBuilder.append(Integer.toString(fp));
         stringBuilder.append(",");
 
+        stringBuilder.append(Integer.toString(tpAndFpAreEmpty));
+        stringBuilder.append(",");
+
+        stringBuilder.append(Integer.toString(tpAndFnAreEmpty));
+        stringBuilder.append(",");
+
         stringBuilder.append(String.format("%.2f", iou_detection_avg));
         stringBuilder.append(",");
 
         stringBuilder.append(String.format("%.2f", iou_recognition_avg));
         stringBuilder.append(",");
 
+        stringBuilder.append(String.format("%.5f", iou_recognition_variance));
+        stringBuilder.append(",");
+
         stringBuilder.append(String.format("%.2f", jaccard_trigram_distance_recognition_avg));
+        stringBuilder.append(",");
+
+        stringBuilder.append(String.format("%.5f", jaccard_trigram_distance_recognition_variance));
         stringBuilder.append(",");
 
         stringBuilder.append(Integer.toString(number_of_considered_ground_truths));
@@ -475,9 +508,14 @@ public class Evaluator {
     }
 
     public static void main(String[] args) {
-        Evaluator evaluator = new Evaluator();
-        evaluator.evaluateOnIncidentalSceneText();
-
+        int runs = 10;
+        System.out.println("Starting run 0/" + runs + " ...");
+        for (int i = 1; i < runs; i++) {
+            // TODO: limit ram to a fixed size
+            Evaluator evaluator = new Evaluator();
+            evaluator.evaluateOnIncidentalSceneText(i);
+            System.out.println("Starting run " + i + "/" + runs + " ...");
+        }
 
     }
 
