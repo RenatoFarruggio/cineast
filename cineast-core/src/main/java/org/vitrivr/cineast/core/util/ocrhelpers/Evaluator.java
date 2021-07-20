@@ -51,7 +51,7 @@ public class Evaluator {
      */
     public void evaluateOnIncidentalSceneText(int runNumber) {
         // These are user inputs. TODO: Implement argument builder
-        final String file_name_results = "resultsIncidentalSceneText_45" + runNumber + ".csv";
+        final String file_name_results = "resultsIncidentalSceneText_45_" + runNumber + ".csv";
         final String path_to_images = "C:\\Users\\Renato\\Downloads\\IncidentalSceneText\\test\\ch4_test_images";
         final String path_to_ground_truth = "C:\\Users\\Renato\\Downloads\\IncidentalSceneText\\test\\Challenge4_Test_Task1_GT";
         final String path_to_output = "output/";
@@ -78,6 +78,8 @@ public class Evaluator {
         // I just don't know how to get rid of them.
         InferenceModel inferenceModel = new InferenceModel(detectionModel, recognitionModel);
         System.out.println("You can ignore the above error message.");
+
+        System.out.println("Starting run " + runNumber + " ...");
 
         try (Writer w = new FileWriter(file_name_results)) {
             //try (Reader r = new FileReader(ground_truth))
@@ -509,12 +511,10 @@ public class Evaluator {
 
     public static void main(String[] args) {
         int runs = 10;
-        System.out.println("Starting run 0/" + runs + " ...");
-        for (int i = 1; i < runs; i++) {
+        for (int i = 1; i <= runs; i++) {
             // TODO: limit ram to a fixed size
             Evaluator evaluator = new Evaluator();
             evaluator.evaluateOnIncidentalSceneText(i);
-            System.out.println("Starting run " + i + "/" + runs + " ...");
         }
 
     }
