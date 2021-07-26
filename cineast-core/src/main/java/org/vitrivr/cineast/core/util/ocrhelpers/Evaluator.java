@@ -503,7 +503,7 @@ public class Evaluator {
     }
 
     public static void main(String[] args) {
-        int runs = 2;
+        int runs = 10;
         for (int i = 1; i <= runs; i++) {
             Evaluator evaluator = new Evaluator();
             evaluator.evaluateOnIncidentalSceneText(i);
