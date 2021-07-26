@@ -49,13 +49,13 @@ public class Evaluator {
      */
     public void evaluateOnIncidentalSceneText(int runNumber) {
         // These are user inputs. TODO: Implement argument builder
-        final String file_name_results = "resultsIncidentalSceneText_45_" + runNumber + ".csv";
+        final String file_name_results = "resultsIncidentalSceneText_50_" + runNumber + ".csv";
         final String path_to_images = "C:\\Users\\Renato\\Downloads\\IncidentalSceneText\\test\\ch4_test_images";
         final String path_to_ground_truth = "C:\\Users\\Renato\\Downloads\\IncidentalSceneText\\test\\Challenge4_Test_Task1_GT";
         final String path_to_output = "output/";
 
         final boolean save_output_images = false;
-        final double det_threshhold = 0.45;
+        final double det_threshhold = 0.5;
 
         File img_folder = new File(path_to_images);
         String[] imageNames = img_folder.list((dir, name) -> name.endsWith(".jpg"));
