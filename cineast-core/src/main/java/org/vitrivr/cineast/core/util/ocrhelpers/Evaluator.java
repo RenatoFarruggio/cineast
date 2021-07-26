@@ -33,8 +33,6 @@ public class Evaluator {
      *  tp,             True positives: The set of <code>DetectedObject</code>s that were detected correctly
      *  fn,             False negatives: The set of undetected ground truth <code>DetectedObject</code>s
      *  fp,             False positives: The set of detected <code>DetectedObject</code>s where there is no corresponding ground truth box
-     *  tpAndFpAreEmpty A flag which is 0 normally, and 1 if both tp and fp are empty
-     *  tpAndFnAreEmpty A flag which is 0 normally, and 1 if both tp and fn are empty
      *  gtDetected,     The set of detected ground truth <code>DetectedObject</code>s
      *  iou_avg,        Average iou of the detected <code>DetectedObject</code>s:
      *                      The sum of all iou's divided by number considered ground truths
@@ -84,7 +82,7 @@ public class Evaluator {
         try (Writer w = new FileWriter(file_name_results)) {
             //try (Reader r = new FileReader(ground_truth))
             BufferedWriter csvWriter = new BufferedWriter(w);
-            csvWriter.append("image_name,x_res,y_res,ms_det,ms_rec,ms_tot,tp,fn,fp,tpAndFpAreEmpty,tpAndFnAreEmpty,iou_detection_avg,iou_recognition_avg,iou_recognition_variance,jaccard_trigram_distance_recognition_avg,jaccard_trigram_distance_recognition_variance,number_of_considered_ground_truths");
+            csvWriter.append("image_name,x_res,y_res,ms_det,ms_rec,ms_tot,tp,fn,fp,gtDetected,iou_detection_avg,iou_recognition_avg,iou_recognition_variance,jaccard_trigram_distance_recognition_avg,jaccard_trigram_distance_recognition_variance,number_of_considered_ground_truths");
             csvWriter.append(System.lineSeparator());
 
             // Define variables
@@ -172,8 +170,7 @@ public class Evaluator {
                         detectionEvaluationResult.getTp().size(),
                         detectionEvaluationResult.getFn().size(),
                         detectionEvaluationResult.getFp().size(),
-                        detectionEvaluationResult.getTpAndFpAreEmpty(),
-                        detectionEvaluationResult.getTpAndFnAreEmpty(),
+                        detectionEvaluationResult.getGtDetected().size(),
                         detectionEvaluationResult.avgIOU,
                         recognitionEvaluationResult.iouMean,
                         recognitionEvaluationResult.iouVariance,
@@ -442,8 +439,7 @@ public class Evaluator {
                                    int tp,
                                    int fn,
                                    int fp,
-                                   int tpAndFpAreEmpty,
-                                   int tpAndFnAreEmpty,
+                                   int gtDetected,
                                    double iou_detection_avg,
                                    double iou_recognition_avg,
                                    double iou_recognition_variance,
@@ -481,10 +477,7 @@ public class Evaluator {
         stringBuilder.append(Integer.toString(fp));
         stringBuilder.append(",");
 
-        stringBuilder.append(Integer.toString(tpAndFpAreEmpty));
-        stringBuilder.append(",");
-
-        stringBuilder.append(Integer.toString(tpAndFnAreEmpty));
+        stringBuilder.append(Integer.toString(gtDetected));
         stringBuilder.append(",");
 
         stringBuilder.append(String.format("%.2f", iou_detection_avg));
@@ -510,9 +503,8 @@ public class Evaluator {
     }
 
     public static void main(String[] args) {
-        int runs = 10;
+        int runs = 2;
         for (int i = 1; i <= runs; i++) {
-            // TODO: limit ram to a fixed size
             Evaluator evaluator = new Evaluator();
             evaluator.evaluateOnIncidentalSceneText(i);
         }
