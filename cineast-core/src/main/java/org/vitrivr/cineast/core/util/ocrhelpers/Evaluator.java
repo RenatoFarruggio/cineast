@@ -36,16 +36,15 @@ public class Evaluator {
      *  gtDetected,     The set of detected ground truth <code>DetectedObject</code>s
      *  iou_avg,        Average iou of the detected <code>DetectedObject</code>s:
      *                      The sum of all iou's divided by number considered ground truths
-     *  jaccard_distance_recognition_avg,
-     *                  The average intersection over union of single letters in the recognition step
-     *  jaccard_distance_recognition_variance,
-     *                  The variance of the intersection over union of single letters in the recognition step
-     *  jaccard_trigram_distance_recognition_avg,
-     *                  The sum of jaccard trigram distances between words found and words in the ground truth
-     *  jaccard_trigram_distance_recognition_variance,
-     *                  The variance of the jaccard trigram distances between words found and words in the ground truth
-     *  numberOfConsideredGroundTruths,
-     *                  The number of ground truth <code>DetectedObjects</code> that have text assigned to
+     *  jaccard_distance_recognition_avg,               The average intersection over union of single letters in the recognition step
+     *  jaccard_distance_recognition_variance,          The variance of the intersection over union of single letters in the recognition step
+     *  jaccard_trigram_distance_recognition_avg,       The sum of jaccard trigram distances between words found and words in the ground truth
+     *  jaccard_trigram_distance_recognition_variance,  The variance of the jaccard trigram distances between words found and words in the ground truth
+     *  numberLevenshteinZero,                          The number of words where the levenshtein distance was 0
+     *  numberLevenshteinOne,                           The number of words where the levenshtein distance was 1
+     *  numberLevenshteinTwo,                           The number of words where the levenshtein distance was 2
+     *  numberLevenshteinThreeOrMore,                   The number of words where the levenshtein distance was 3 or more
+     *  numberOfConsideredGroundTruths,                 The number of ground truth <code>DetectedObjects</code> that have text assigned to
      */
     public void evaluateOnIncidentalSceneText(int runNumber) {
         // These are user inputs. TODO: Implement argument builder
@@ -82,7 +81,7 @@ public class Evaluator {
         try (Writer w = new FileWriter(file_name_results)) {
             //try (Reader r = new FileReader(ground_truth))
             BufferedWriter csvWriter = new BufferedWriter(w);
-            csvWriter.append("image_name,x_res,y_res,ms_det,ms_rec,ms_tot,tp,fn,fp,gtDetected,iou_detection_avg,iou_recognition_avg,iou_recognition_variance,jaccard_trigram_distance_recognition_avg,jaccard_trigram_distance_recognition_variance,number_of_considered_ground_truths");
+            csvWriter.append("image_name,x_res,y_res,ms_det,ms_rec,ms_tot,tp,fn,fp,gtDetected,iou_detection_avg,iou_recognition_avg,iou_recognition_variance,jaccard_trigram_distance_recognition_avg,jaccard_trigram_distance_recognition_variance,numberLevenshteinZero,numberLevenshteinOne,numberLevenshteinTwo,numberLevenshteinThreeOrMore,number_of_considered_ground_truths");
             csvWriter.append(System.lineSeparator());
 
             // Define variables
@@ -154,7 +153,7 @@ public class Evaluator {
                 // 5. Evaluate detections
                 //System.out.println("Evaluating detections of img: " + imageName + " ...");
                 String key = imageName.split("\\.", 2)[0];
-                detectionEvaluationResult = evaluateDetections(img, detectedBoxes, groundTruthDetectedObjects, det_threshhold);
+                detectionEvaluationResult = evaluateDetections(img, detectedBoxes, groundTruthDetectedObjects, det_threshold);
 
                 // 6. Evaluate recognitions
                 recognitionEvaluationResult = evaluateRecognitions(img, recognizedText, groundTruthWithTextDetectedObjects);
@@ -176,6 +175,10 @@ public class Evaluator {
                         recognitionEvaluationResult.iouVariance,
                         recognitionEvaluationResult.trigramMean,
                         recognitionEvaluationResult.trigramVariance,
+                        recognitionEvaluationResult.numberLevenshteinZero,
+                        recognitionEvaluationResult.numberLevenshteinOne,
+                        recognitionEvaluationResult.numberLevenshteinTwo,
+                        recognitionEvaluationResult.numberLevenshteinThreeOrMore,
                         recognitionEvaluationResult.numberOfConsideredGroundTruths);
                 csvWriter.write(line);
                 //System.out.println(line);
@@ -296,11 +299,12 @@ public class Evaluator {
         List<TextboxWithText> textboxesWithText = new ArrayList<>();
 
         if (size == 0) {
-            return new RecognitionEvaluationResult(1.0, 1.0,1.0, 1.0, 0, textboxesWithText);
+            return new RecognitionEvaluationResult(1.0, 1.0,1.0, 1.0, 0, 0, 0, 0, 0, textboxesWithText);
         }
 
         List<Double> ious = new ArrayList<>();
         List<Double> jaccardTrigramSimilarities = new ArrayList<>();
+        List<Integer> levenshteinSimilarities = new ArrayList<>();
 
         //double avgIOU = 0;
         //double avgJaccardTrigram = 0;
@@ -312,6 +316,7 @@ public class Evaluator {
 
             ious.add(Distances.iou(recognized, groundTruth));
             jaccardTrigramSimilarities.add(Distances.jaccardTrigramDistance(recognized, groundTruth));
+            levenshteinSimilarities.add(Distances.levenshteinDistance(recognized, groundTruth));
 
             Textbox textbox = Textbox.fromDetectedObject_extended(detectedObjectGroundTruth, img.getWidth(), img.getHeight());
             TextboxWithText textboxWithText = new TextboxWithText(textbox,groundTruth,recognized);
@@ -324,8 +329,13 @@ public class Evaluator {
         double trigramMean = getMean(jaccardTrigramSimilarities);
         double trigramVariance = getVariance(jaccardTrigramSimilarities, trigramMean);
 
+        int numberLevenshteinZero = Collections.frequency(levenshteinSimilarities,0);
+        int numberLevenshteinOne = Collections.frequency(levenshteinSimilarities,1);
+        int numberLevenshteinTwo = Collections.frequency(levenshteinSimilarities,2);
+        int numberLevenshteinThreeOrMore = levenshteinSimilarities.size() -
+                (numberLevenshteinZero + numberLevenshteinOne + numberLevenshteinTwo);
 
-        return new RecognitionEvaluationResult(iouMean, iouVariance, trigramMean, trigramVariance, size, textboxesWithText);
+        return new RecognitionEvaluationResult(iouMean, iouVariance, trigramMean, trigramVariance, numberLevenshteinZero, numberLevenshteinOne, numberLevenshteinTwo, numberLevenshteinThreeOrMore, size, textboxesWithText);
     }
 
     private double getMean(List<Double> data) {
@@ -445,6 +455,10 @@ public class Evaluator {
                                    double iou_recognition_variance,
                                    double jaccard_trigram_distance_recognition_avg,
                                    double jaccard_trigram_distance_recognition_variance,
+                                   int numberLevenshteinZero,
+                                   int numberLevenshteinOne,
+                                   int numberLevenshteinTwo,
+                                   int numberLevenshteinThreeOrMore,
                                    int number_of_considered_ground_truths)
             throws IOException {
 
@@ -495,6 +509,18 @@ public class Evaluator {
         stringBuilder.append(String.format("%.5f", jaccard_trigram_distance_recognition_variance));
         stringBuilder.append(",");
 
+        stringBuilder.append(Integer.toString(numberLevenshteinZero));
+        stringBuilder.append(",");
+
+        stringBuilder.append(Integer.toString(numberLevenshteinOne));
+        stringBuilder.append(",");
+
+        stringBuilder.append(Integer.toString(numberLevenshteinTwo));
+        stringBuilder.append(",");
+
+        stringBuilder.append(Integer.toString(numberLevenshteinThreeOrMore));
+        stringBuilder.append(",");
+
         stringBuilder.append(Integer.toString(number_of_considered_ground_truths));
 
         stringBuilder.append(System.lineSeparator());
@@ -503,7 +529,6 @@ public class Evaluator {
     }
 
     public static void main(String[] args) {
-        int runs = 10;
         for (int i = 1; i <= runs; i++) {
             Evaluator evaluator = new Evaluator();
             evaluator.evaluateOnIncidentalSceneText(i);

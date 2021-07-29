@@ -1,6 +1,7 @@
 package org.vitrivr.cineast.core.util.ocrhelpers;
 
 import ai.djl.modality.cv.output.DetectedObjects;
+import org.apache.commons.text.similarity.LevenshteinDistance;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -85,5 +86,9 @@ public class Distances {
         }
 
         return trigrams;
+    }
+
+    public static int levenshteinDistance(String word1, String word2) {
+        return LevenshteinDistance.getDefaultInstance().apply(word1, word2);
     }
 }
