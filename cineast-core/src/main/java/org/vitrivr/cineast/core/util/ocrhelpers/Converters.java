@@ -39,7 +39,8 @@ public class Converters {
 
         for (Classifications.Classification classification : input.items()) {
             DetectedObjects.DetectedObject detectedObject = (DetectedObjects.DetectedObject)classification;
-            if (detectedObject.getClassName().equals("###")) {
+            if (detectedObject.getClassName().equals("###")
+                || detectedObject.getClassName().equals("")) {
                 continue;
             }
 

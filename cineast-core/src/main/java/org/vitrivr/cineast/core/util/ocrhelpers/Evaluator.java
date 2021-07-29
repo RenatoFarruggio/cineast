@@ -21,6 +21,10 @@ import java.util.List;
 public class Evaluator {
     private static final Logger LOGGER = LogManager.getLogger();
 
+    final static int runs = 1;
+    final static boolean save_output_images = true;
+    final static double det_threshold = 0.5;
+
     /**
      * Creates a csv file containing:
      *
@@ -48,13 +52,12 @@ public class Evaluator {
      */
     public void evaluateOnIncidentalSceneText(int runNumber) {
         // These are user inputs. TODO: Implement argument builder
-        final String file_name_results = "resultsIncidentalSceneText_50_" + runNumber + ".csv";
+
+        final String file_name_results = "resultsIncidentalSceneText_" + (int)(det_threshold*100) + "_" + runNumber + ".csv";
         final String path_to_images = "C:\\Users\\Renato\\Downloads\\IncidentalSceneText\\test\\ch4_test_images";
         final String path_to_ground_truth = "C:\\Users\\Renato\\Downloads\\IncidentalSceneText\\test\\Challenge4_Test_Task1_GT";
         final String path_to_output = "output/";
 
-        final boolean save_output_images = false;
-        final double det_threshhold = 0.5;
 
         File img_folder = new File(path_to_images);
         String[] imageNames = img_folder.list((dir, name) -> name.endsWith(".jpg"));
