@@ -60,7 +60,7 @@ public class InferenceModel implements AutoCloseable {
      */
     public InferenceModel(File detectionModelZip, File recognitionModelZip) {
         // Load text detection model
-        Criteria<Image, DetectedObjects> criteria1 = Criteria.builder()
+        Criteria<Image, DetectedObjects> criteriaDetection = Criteria.builder()
                 .optEngine("PaddlePaddle")
                 .setTypes(Image.class, DetectedObjects.class)
                 .optModelUrls(String.valueOf(detectionModelZip.toURI()))
@@ -68,7 +68,7 @@ public class InferenceModel implements AutoCloseable {
                 .build();
         ZooModel<Image, DetectedObjects> detectionModel = null;
         try {
-            detectionModel = ModelZoo.loadModel(criteria1);
+            detectionModel = ModelZoo.loadModel(criteriaDetection);
         } catch (IOException | ModelNotFoundException | MalformedModelException e) {
             e.printStackTrace();
         }
@@ -76,7 +76,7 @@ public class InferenceModel implements AutoCloseable {
         this.detector = detectionModel.newPredictor();
 
         // Load model for text recognition
-        Criteria<Image, String> criteria3 = Criteria.builder()
+        Criteria<Image, String> criteriaRecognition = Criteria.builder()
                 .optEngine("PaddlePaddle")
                 .setTypes(Image.class, String.class)
                 .optModelUrls(String.valueOf(recognitionModelZip.toURI()))
@@ -84,7 +84,7 @@ public class InferenceModel implements AutoCloseable {
                 .build();
         ZooModel<Image, String> recognitionModel = null;
         try {
-            recognitionModel = ModelZoo.loadModel(criteria3);
+            recognitionModel = ModelZoo.loadModel(criteriaRecognition);
         } catch (IOException | ModelNotFoundException | MalformedModelException e) {
             e.printStackTrace();
         }

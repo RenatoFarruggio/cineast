@@ -283,7 +283,7 @@ public class Evaluator {
                         DRAWMODE.fp,
                         DRAWMODE.gtDetected,
                         DRAWMODE.fn));
-        Collections.reverse(order);
+        Collections.reverse(order);  // Since we draw them from bottom to top, but declare them from top to bottom
 
         int y = img.getHeight() - 10;
         for (DRAWMODE mode : order) {
