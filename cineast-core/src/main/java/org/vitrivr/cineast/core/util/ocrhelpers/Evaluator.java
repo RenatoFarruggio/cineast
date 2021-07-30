@@ -51,7 +51,6 @@ public class Evaluator {
      *  numberLevenshteinThreeOrMore,                   The number of words where the levenshtein distance was 3 or more
      *  numberOfConsideredGroundTruths,                 The number of ground truth <code>DetectedObjects</code> that have text assigned to
      */
-
     public void evaluateEndToEndOnIncidentalSceneText(int runNumber) {
         // These are user inputs. TODO (end2end): Implement argument builder
 
@@ -488,8 +487,7 @@ public class Evaluator {
         try (Writer w = new FileWriter(file_name_results_recognition)) {
             //try (Reader r = new FileReader(ground_truth))
             BufferedWriter csvWriter = new BufferedWriter(w);
-            //csvWriter.append("image_name,x_res,y_res,ms_det,ms_rec,ms_tot,tp,fn,fp,gtDetected,iou_detection_avg,iou_recognition_avg,iou_recognition_variance,jaccard_trigram_distance_recognition_avg,jaccard_trigram_distance_recognition_variance,numberLevenshteinZero,numberLevenshteinOne,numberLevenshteinTwo,numberLevenshteinThreeOrMore,number_of_considered_ground_truths");
-            csvWriter.append("imageName,width,height,ms_rec,levenshteinCaseInsensitive,levenshteinCaseSensitive");
+            csvWriter.append("imageName,width,height,ms_rec,levenshteinCaseInsensitive,levenshteinCaseSensitive,groundTruthLength");
             csvWriter.append(System.lineSeparator());
 
             // Define variables
@@ -586,7 +584,8 @@ public class Evaluator {
                         img.getHeight(),
                         ms_rec,
                         levenshteinCaseInsensitive,
-                        levenshteinCaseSensitive);
+                        levenshteinCaseSensitive,
+                        groundTruthText.length());
 
                 csvWriter.write(line);
                 /*
@@ -673,7 +672,8 @@ public class Evaluator {
                                                int height,
                                                long ms_rec,
                                                int levenshteinCaseInsensitive,
-                                               int levenshteinCaseSensitive) {
+                                               int levenshteinCaseSensitive,
+                                               int groundTruthLength) {
         StringBuilder stringBuilder = new StringBuilder();
 
         stringBuilder.append(imageName);
@@ -692,6 +692,9 @@ public class Evaluator {
         stringBuilder.append(",");
 
         stringBuilder.append(levenshteinCaseSensitive);
+        stringBuilder.append(",");
+
+        stringBuilder.append(groundTruthLength);
 
         stringBuilder.append(System.lineSeparator());
 
