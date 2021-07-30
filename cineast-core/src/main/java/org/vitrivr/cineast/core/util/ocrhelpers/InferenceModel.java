@@ -206,6 +206,29 @@ public class InferenceModel implements AutoCloseable {
         return null;
     }
 
+    /**
+     * Do recognition on an already cropped image
+     *
+     * @param img The already cropped image to do recognition on
+     * @return The text that has been recognized
+     */
+    public String recognition(Image img) {
+        String name = null;
+        try {
+            name = recognizer.predict(img);
+        } catch (TranslateException e) {
+            e.printStackTrace();
+        }
+        return name;
+    }
+
+    /**
+     * Do recognition on an image based on bounding boxes
+     *
+     * @param img The image to do recognition on
+     * @param detectedObjects The bounding boxes that the image will be cropped to before recognition
+     * @return The list of texts that have been recognized
+     */
     public List<String> recognition(Image img, DetectedObjects detectedObjects) {
 
         List<DetectedObjects.DetectedObject> boxes = detectedObjects.items();
