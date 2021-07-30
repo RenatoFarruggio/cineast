@@ -103,4 +103,31 @@ public class IncidentalSceneTextLoader {
         // TODO: implement me
         return null;
     }
+
+    public static HashMap<String, String> loadRecognitionGroundTruthHashMap(Path pathToTxtFile) {
+        HashMap<String, String> map = new HashMap<>();
+
+        File file = new File(pathToTxtFile.toString());
+
+        final Scanner s;
+
+        try {
+
+            s = new Scanner(file);
+            while(s.hasNextLine()) {
+                String line = s.nextLine();
+                String[] values = line.split(",", 2);
+                //System.out.println(values[0]);
+                // Because the first word has weird chars in front of it
+                String key = values[0].substring(values[0].indexOf("w"));
+                String text = (values[1]).substring(2, values[1].length()-1);
+                map.put(key, text);
+                //System.out.println("---------");
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+
+        return map;
+    }
 }

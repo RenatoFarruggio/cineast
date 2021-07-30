@@ -88,11 +88,8 @@ public class Distances {
         return trigrams;
     }
 
-    public static int levenshteinDistanceCaseSensitive(String word1, String word2) {
+    /* CASE SENSITIVE */
+    public static int levenshteinDistance(String word1, String word2) {
         return LevenshteinDistance.getDefaultInstance().apply(word1, word2);
-    }
-
-    public static int levenshteinDistanceCaseInsensitive(String word1, String word2) {
-        return LevenshteinDistance.getDefaultInstance().apply(word1.toLowerCase(), word2.toLowerCase());
     }
 }
