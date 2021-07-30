@@ -319,7 +319,7 @@ public class Evaluator {
 
             ious.add(Distances.iou(recognized, groundTruth));
             jaccardTrigramSimilarities.add(Distances.jaccardTrigramDistance(recognized, groundTruth));
-            levenshteinSimilarities.add(Distances.levenshteinDistance(recognized, groundTruth));
+            levenshteinSimilarities.add(Distances.levenshteinDistanceCaseInsensitive(recognized, groundTruth));
 
             Textbox textbox = Textbox.fromDetectedObject_extended(detectedObjectGroundTruth, img.getWidth(), img.getHeight());
             TextboxWithText textboxWithText = new TextboxWithText(textbox,groundTruth,recognized);
