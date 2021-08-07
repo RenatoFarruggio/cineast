@@ -4,7 +4,6 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
 
 import javax.imageio.ImageIO;
 
@@ -17,14 +16,6 @@ public class ImageHandler {
             System.out.println("Image " + filename + " not found!");
         }
         return img;
-    }
-
-    public static void saveImage(BufferedImage img) {
-        saveImage(img,"", "saved", "png");
-    }
-
-    public static void saveImage(BufferedImage img, String name, String filetype) {
-        saveImage(img, "", name, filetype);
     }
 
     public static void saveImage(BufferedImage img, String pathname, String name, String filetype) {
@@ -51,7 +42,6 @@ public class ImageHandler {
     }
 
     public static void drawText(BufferedImage img, String str, int startposX, int startposY, Color color) {
-        // TODO: add background color
         Graphics2D graph = img.createGraphics();
         graph.setColor(color);
         graph.setFont(new Font("Courier New",Font.BOLD,20));

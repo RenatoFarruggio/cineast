@@ -1,6 +1,5 @@
 package org.vitrivr.cineast.core.util.ocrhelpers;
 
-import ai.djl.modality.cv.output.DetectedObjects;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 
 import java.util.HashSet;

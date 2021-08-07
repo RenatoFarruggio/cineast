@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class InferenceModel implements AutoCloseable {
 
+    //  This class is used for the demo, but has no use in Cineast.
     public class InferenceResult {
         BufferedImage img;
         String imgName;
@@ -52,7 +53,7 @@ public class InferenceModel implements AutoCloseable {
     private final Predictor<Image, String> recognizer;
 
     /**
-     * Constructor to create a model based on locally available files. Possible filetypes according to:
+     * Constructor to create a model based on locally available files. Possible file types according to:
      * https://djl.ai/docs/load_model.html#current-supported-archive-formats
      *
      * @param detectionModelZip The trained model for text detection, e.g. zip file
@@ -253,33 +254,18 @@ public class InferenceModel implements AutoCloseable {
 
     Image getSubImage(Image img, BoundingBox box) {
         Rectangle rect = box.getBounds();
-        double[] extended = extendRect(rect.getX(), rect.getY(), rect.getWidth(), rect.getHeight());
+        Rectangle extendedRect = Converters.extendRect(rect);
+
         int width = img.getWidth();
         int height = img.getHeight();
-        int[] recovered = {
-                (int) (extended[0] * width),
-                (int) (extended[1] * height),
-                (int) (extended[2] * width),
-                (int) (extended[3] * height)
-        };
-        return img.getSubimage(recovered[0], recovered[1], recovered[2], recovered[3]);
-    }
 
-    double[] extendRect(double xmin, double ymin, double width, double height) {
-        double centerx = xmin + width / 2;
-        double centery = ymin + height / 2;
-        if (width > height) {
-            width += height * 2.0;
-            height *= 3.0;
-        } else {
-            height += width * 2.0;
-            width *= 3.0;
-        }
-        double newX = centerx - width / 2 < 0 ? 0 : centerx - width / 2;
-        double newY = centery - height / 2 < 0 ? 0 : centery - height / 2;
-        double newWidth = newX + width > 1 ? 1 - newX : width;
-        double newHeight = newY + height > 1 ? 1 - newY : height;
-        return new double[] {newX, newY, newWidth, newHeight};
+        Rectangle extendedRectangleAbsolute = Converters.rectRelative2Absolute(extendedRect, width, height);
+
+        return img.getSubimage(
+                (int) extendedRectangleAbsolute.getX(),
+                (int) extendedRectangleAbsolute.getY(),
+                (int) extendedRectangleAbsolute.getWidth(),
+                (int) extendedRectangleAbsolute.getHeight());
     }
 
     void printWordAndBoundingBox(String word, BoundingBox box) {

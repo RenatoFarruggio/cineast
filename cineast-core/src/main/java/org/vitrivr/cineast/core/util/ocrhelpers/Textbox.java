@@ -13,7 +13,6 @@ import java.util.List;
  * A Textbox defines a textbox of a picture.
  * The values refer to the actual absolute pixel position on the picture.
  */
-// TODO: change to have width and height
 public class Textbox {
     int xMin, xMax;
     int yMin, yMax;
@@ -63,32 +62,12 @@ public class Textbox {
     public static Textbox fromDetectedObject_extended(DetectedObjects.DetectedObject detectedObject, int imageWidth, int imageHeight) {
         Rectangle rect = detectedObject.getBoundingBox().getBounds();
 
-        double xmin = rect.getX();
-        double ymin = rect.getY();
-        double width = rect.getWidth();
-        double height = rect.getHeight();
+        Rectangle extendedRect = Converters.extendRect(rect);
 
-        double centerx = xmin + width / 2;
-        double centery = ymin + height / 2;
-        if (width > height) {
-            width += height * 2.0;
-            height *= 3.0;
-        } else {
-            height += width * 2.0;
-            width *= 3.0;
-        }
-        double newX = centerx - width / 2 < 0 ? 0 : centerx - width / 2;
-        double newY = centery - height / 2 < 0 ? 0 : centery - height / 2;
-        double newWidth = newX + width > 1 ? 1 - newX : width;
-        double newHeight = newY + height > 1 ? 1 - newY : height;
-
-
-        int xMin = (int)(newX * imageWidth);
-        int xMax = (int)(newWidth * imageWidth) + xMin;
-        int yMin = (int)(newY * imageHeight);
-        int yMax = (int)(newHeight * imageHeight) + yMin;
-        assert xMin < xMax;
-        assert yMin < yMax;
+        int xMin = (int)(extendedRect.getX() * imageWidth);
+        int xMax = (int)(extendedRect.getWidth() * imageWidth) + xMin;
+        int yMin = (int)(extendedRect.getY() * imageHeight);
+        int yMax = (int)(extendedRect.getHeight() * imageHeight) + yMin;
 
         return new Textbox(xMin,xMax,yMin,yMax);
     }
@@ -128,10 +107,4 @@ public class Textbox {
                 ", yMax=" + yMax +
                 '}';
     }
-
-    /*
-    public static void main(String[] args) {
-        Textbox exampleTextbox = Textbox.fromIncidentalSceneTextTXT("822,288,872,286,871,298,823,300,yourself");
-        System.out.println(exampleTextbox);
-    }*/
 }

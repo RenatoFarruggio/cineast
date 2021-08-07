@@ -22,7 +22,7 @@ public class Evaluator {
     private static final Logger LOGGER = LogManager.getLogger();
 
     final static int runs = 1;
-    final static boolean save_output_images = true;
+    final static boolean save_output_images = false;
     final static double det_threshold = 0.5;
 
     // TODO (end2end): rewrite all of this
@@ -251,7 +251,7 @@ public class Evaluator {
      *  numberOfConsideredGroundTruths,                 The number of ground truth <code>DetectedObjects</code> that have text assigned to
      */
     public void evaluateDetectionsOnIncidentalSceneText(int runNumber) {
-        // These are user inputs. TODO (end2end): Implement argument builder
+        // These are user inputs. TODO (detections): Implement argument builder
 
         final String file_name_results_detection = "resultsIncidentalSceneTextDetection_" + (int)(det_threshold*100) + "_" + runNumber + ".csv";
         final String path_to_images_detection = "C:\\Users\\Renato\\Downloads\\IncidentalSceneText\\test\\ch4_test_images";
@@ -263,7 +263,7 @@ public class Evaluator {
         String[] imageNamesDetection = img_folder_detection.list((dir, name) -> name.endsWith(".jpg"));
 
         assert imageNamesDetection != null;
-        // TODO (end2end): find a solution for img sorting
+        // TODO (detections): find a solution for img sorting
         // Problem: this sorts images lexicographically, i.e.
         // img_1, img_10, img_100, img_101, img_102, ...
         // I want: img_1, img_2, img_3, ...
@@ -274,8 +274,6 @@ public class Evaluator {
         if (!(detectionModel.exists() && recognitionModel.exists())) {
             LOGGER.error("Please make sure that the ocr models are downloaded. Run './gradlew getExternalFiles' to download them.");
         }
-        System.out.println("The following error messages aren't actually errors.");
-        // I just don't know how to get rid of them.
         InferenceModel inferenceModel = new InferenceModel(detectionModel, recognitionModel);
         System.out.println("You can ignore the above error message.");
 
@@ -367,7 +365,6 @@ public class Evaluator {
                 ms_rec = end_rec - start_rec;
 
                 // 8. Write data to file
-                // TODO (end2end): implement me
                 String line = format_csv_line_detection(imageName, img.getWidth(), img.getHeight(),
                         ms_det, ms_rec, ms_tot,
                         detectionEvaluationResult.getTp().size(),
@@ -508,10 +505,9 @@ public class Evaluator {
             Path groundTruthFilePath = Paths.get(path_to_ground_truth_recognition);
             HashMap<String, String> groundTruthRecognitions = IncidentalSceneTextLoader.loadRecognitionGroundTruthHashMap(groundTruthFilePath);
 
-            // TODO: Implement everything from here on
             // PIPELINE OF RECOGNITION EVALUATION //
             for (String imageName : imageNamesRecognition) {
-                System.out.println("Evaluating detection model on image " + counter++ + "/" + numberOfImages + ": " + imageName + " ...");
+                System.out.println("Evaluating recognition model on image " + counter++ + "/" + numberOfImages + ": " + imageName + " ...");
 
                 // TODO: load ground truths into a hashmap before the for-loop
                 Path imagePath = Paths.get(path_to_images_recognition,imageName);
@@ -991,7 +987,7 @@ public class Evaluator {
     public static void main(String[] args) {
         for (int i = 1; i <= runs; i++) {
             Evaluator evaluator = new Evaluator();
-            //evaluator.evaluateDetectionsOnIncidentalSceneText(i);
+            evaluator.evaluateDetectionsOnIncidentalSceneText(i);
             evaluator.evaluateRecognitionsOnIncidentalSceneText(i);
         }
 
